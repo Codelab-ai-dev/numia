@@ -32,6 +32,44 @@ type AiConversation struct {
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 }
 
+type Budget struct {
+	ID            pgtype.UUID        `json:"id"`
+	UserID        pgtype.UUID        `json:"user_id"`
+	GlobalAmount  pgtype.Numeric     `json:"global_amount"`
+	CycleStartDay int16              `json:"cycle_start_day"`
+	IsActive      bool               `json:"is_active"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
+type BudgetAllocation struct {
+	ID         pgtype.UUID        `json:"id"`
+	BudgetID   pgtype.UUID        `json:"budget_id"`
+	CategoryID pgtype.UUID        `json:"category_id"`
+	Amount     pgtype.Numeric     `json:"amount"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+}
+
+type BudgetCategory struct {
+	ID        pgtype.UUID        `json:"id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	Name      string             `json:"name"`
+	Emoji     string             `json:"emoji"`
+	IsCustom  bool               `json:"is_custom"`
+	IsActive  bool               `json:"is_active"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type BudgetNotification struct {
+	ID         pgtype.UUID        `json:"id"`
+	UserID     pgtype.UUID        `json:"user_id"`
+	CategoryID pgtype.UUID        `json:"category_id"`
+	CycleStart pgtype.Date        `json:"cycle_start"`
+	Threshold  int16              `json:"threshold"`
+	SentAt     pgtype.Timestamptz `json:"sent_at"`
+}
+
 type Debt struct {
 	ID             pgtype.UUID        `json:"id"`
 	UserID         pgtype.UUID        `json:"user_id"`
@@ -46,6 +84,25 @@ type Debt struct {
 	Notes          pgtype.Text        `json:"notes"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
+type Device struct {
+	ID        pgtype.UUID        `json:"id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	FcmToken  string             `json:"fcm_token"`
+	Platform  string             `json:"platform"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type Expense struct {
+	ID          pgtype.UUID        `json:"id"`
+	UserID      pgtype.UUID        `json:"user_id"`
+	CategoryID  pgtype.UUID        `json:"category_id"`
+	Amount      pgtype.Numeric     `json:"amount"`
+	Description pgtype.Text        `json:"description"`
+	Subcategory pgtype.Text        `json:"subcategory"`
+	ExpenseDate pgtype.Date        `json:"expense_date"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
 type Goal struct {
