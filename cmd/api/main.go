@@ -9,11 +9,16 @@ import (
 	"syscall"
 	"time"
 
+	"numia-api/internal/account"
 	"numia-api/internal/auth"
 	"numia-api/internal/config"
 	"numia-api/internal/database"
 	"numia-api/internal/database/sqlc"
+	"numia-api/internal/debt"
+	"numia-api/internal/goal"
 	"numia-api/internal/middleware"
+	"numia-api/internal/transaction"
+	"numia-api/internal/user"
 
 	"github.com/gin-gonic/gin"
 )
@@ -50,9 +55,33 @@ func main() {
 	authHandler := auth.NewHandler(authService)
 	authHandler.RegisterRoutes(api)
 
-	// Protected group for future features
+	// Protected group
 	protected := api.Group("", middleware.AuthRequired(cfg.JWTSecret))
-	_ = protected // will be used in next tasks
+
+	// User
+	userService := user.NewService(queries)
+	userHandler := user.NewHandler(userService)
+	userHandler.RegisterRoutes(protected)
+
+	// Accounts
+	accountService := account.NewService(queries)
+	accountHandler := account.NewHandler(accountService)
+	accountHandler.RegisterRoutes(protected)
+
+	// Transactions
+	transactionService := transaction.NewService(queries)
+	transactionHandler := transaction.NewHandler(transactionService)
+	transactionHandler.RegisterRoutes(protected)
+
+	// Goals
+	goalService := goal.NewService(queries)
+	goalHandler := goal.NewHandler(goalService)
+	goalHandler.RegisterRoutes(protected)
+
+	// Debts
+	debtService := debt.NewService(queries)
+	debtHandler := debt.NewHandler(debtService)
+	debtHandler.RegisterRoutes(protected)
 
 	srv := &http.Server{Addr: ":" + cfg.Port, Handler: r}
 	go func() {
