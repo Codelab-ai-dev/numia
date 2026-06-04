@@ -1,8 +1,11 @@
+import 'dart:convert';
+import 'dart:async';
 import 'dart:ui';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:uuid/uuid.dart';
-import '../../../core/groq_client.dart';
+import '../../../core/providers.dart';
 import '../../../shared/constants/n_colors.dart';
 import '../../../shared/constants/n_spacing.dart';
 import '../../../shared/constants/n_typography.dart';
@@ -10,28 +13,20 @@ import '../../../shared/widgets/n_badge.dart';
 import '../../../shared/widgets/n_gradient_bg.dart';
 import '../domain/message.dart';
 
-const _systemPrompt =
-    'Eres numia, un coach financiero personal con IA para México. '
-    'Tu personalidad es amigable, directa y motivadora. '
-    'Respondes en español mexicano de forma concisa (máx 3 párrafos). '
-    'Ayudas con: presupuesto, ahorro, deudas, inversiones y metas financieras. '
-    'Siempre consideras el contexto mexicano (pesos MXN, SAT, AFORE, CETES, etc). '
-    'Si no tienes datos suficientes, pide información específica. '
-    'Usa formato limpio, no markdown pesado.';
-
-class CoachScreen extends StatefulWidget {
+class CoachScreen extends ConsumerStatefulWidget {
   const CoachScreen({super.key});
 
   @override
-  State<CoachScreen> createState() => _CoachScreenState();
+  ConsumerState<CoachScreen> createState() => _CoachScreenState();
 }
 
-class _CoachScreenState extends State<CoachScreen> {
+class _CoachScreenState extends ConsumerState<CoachScreen> {
   final _messages = <Message>[];
   final _scrollCtrl = ScrollController();
   final _inputCtrl = TextEditingController();
-  final _uuid = const Uuid();
   bool _isStreaming = false;
+  String? _conversationId;
+  int _msgCounter = 0;
 
   @override
   void dispose() {
@@ -60,7 +55,7 @@ class _CoachScreenState extends State<CoachScreen> {
 
     setState(() {
       _messages.add(Message(
-        id: _uuid.v4(),
+        id: 'msg_${_msgCounter++}',
         content: text,
         role: MessageRole.user,
         timestamp: DateTime.now(),
@@ -68,15 +63,7 @@ class _CoachScreenState extends State<CoachScreen> {
     });
     _scrollToBottom();
 
-    final history = <Map<String, String>>[
-      {'role': 'system', 'content': _systemPrompt},
-      ..._messages.map((m) => {
-            'role': m.role == MessageRole.user ? 'user' : 'assistant',
-            'content': m.content,
-          }),
-    ];
-
-    final assistantId = _uuid.v4();
+    final assistantId = 'msg_${_msgCounter++}';
     setState(() {
       _isStreaming = true;
       _messages.add(Message(
@@ -88,42 +75,78 @@ class _CoachScreenState extends State<CoachScreen> {
     });
     _scrollToBottom();
 
-    await GroqClient.instance.chatStream(
-      messages: history,
-      onToken: (token) {
-        setState(() {
-          final idx = _messages.indexWhere((m) => m.id == assistantId);
-          if (idx != -1) {
-            final old = _messages[idx];
-            _messages[idx] = Message(
-              id: old.id,
-              content: old.content + token,
-              role: MessageRole.assistant,
-              timestamp: old.timestamp,
-            );
+    try {
+      final apiClient = ref.read(apiClientProvider);
+      final response = await apiClient.dio.post(
+        '/api/v1/coach/chat',
+        data: {
+          'message': text,
+          if (_conversationId != null) 'conversation_id': _conversationId,
+        },
+        options: Options(
+          responseType: ResponseType.stream,
+          headers: {'Accept': 'text/event-stream'},
+        ),
+      );
+
+      final stream = response.data.stream as Stream<List<int>>;
+      String buffer = '';
+      await for (final chunk in stream.transform(utf8.decoder)) {
+        buffer += chunk;
+        // Process complete SSE events (separated by \n\n)
+        while (buffer.contains('\n\n')) {
+          final idx = buffer.indexOf('\n\n');
+          final event = buffer.substring(0, idx);
+          buffer = buffer.substring(idx + 2);
+
+          if (!event.startsWith('data: ')) continue;
+          final data = event.substring(6); // Remove "data: " prefix
+
+          if (data == '[DONE]') break;
+
+          final json = jsonDecode(data) as Map<String, dynamic>;
+
+          if (json.containsKey('token')) {
+            // Append token to assistant message
+            setState(() {
+              final msgIdx = _messages.indexWhere((m) => m.id == assistantId);
+              if (msgIdx != -1) {
+                final old = _messages[msgIdx];
+                _messages[msgIdx] = Message(
+                  id: old.id,
+                  content: old.content + (json['token'] as String),
+                  role: MessageRole.assistant,
+                  timestamp: old.timestamp,
+                );
+              }
+            });
+            _scrollToBottom();
+          } else if (json.containsKey('conversation_id')) {
+            // Done event — save conversation ID
+            _conversationId = json['conversation_id'] as String;
+          } else if (json.containsKey('error')) {
+            // Error from server
+            throw Exception(json['error']);
           }
-        });
-        _scrollToBottom();
-      },
-      onDone: () {
-        if (mounted) setState(() => _isStreaming = false);
-      },
-      onError: (e) {
-        if (!mounted) return;
-        setState(() {
-          _isStreaming = false;
-          final idx = _messages.indexWhere((m) => m.id == assistantId);
-          if (idx != -1) {
-            _messages[idx] = Message(
-              id: assistantId,
-              content: 'Hubo un error al conectar con la IA. Verifica tu API key de Groq e intenta de nuevo.',
-              role: MessageRole.assistant,
-              timestamp: DateTime.now(),
-            );
-          }
-        });
-      },
-    );
+        }
+      }
+
+      if (mounted) setState(() => _isStreaming = false);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isStreaming = false;
+        final idx = _messages.indexWhere((m) => m.id == assistantId);
+        if (idx != -1) {
+          _messages[idx] = Message(
+            id: assistantId,
+            content: 'Hubo un error al conectar con el coach. Intenta de nuevo.',
+            role: MessageRole.assistant,
+            timestamp: DateTime.now(),
+          );
+        }
+      });
+    }
   }
 
   @override
