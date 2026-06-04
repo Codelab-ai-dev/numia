@@ -11,7 +11,9 @@ import (
 
 	"numia-api/internal/account"
 	"numia-api/internal/auth"
+	"numia-api/internal/coach"
 	"numia-api/internal/config"
+	"numia-api/internal/dashboard"
 	"numia-api/internal/database"
 	"numia-api/internal/database/sqlc"
 	"numia-api/internal/debt"
@@ -82,6 +84,17 @@ func main() {
 	debtService := debt.NewService(queries)
 	debtHandler := debt.NewHandler(debtService)
 	debtHandler.RegisterRoutes(protected)
+
+	// Dashboard
+	dashboardService := dashboard.NewService(queries)
+	dashboardHandler := dashboard.NewHandler(dashboardService)
+	dashboardHandler.RegisterRoutes(protected)
+
+	// Coach
+	groqClient := coach.NewGroqClient(cfg.GroqAPIKey)
+	coachService := coach.NewService(queries, groqClient)
+	coachHandler := coach.NewHandler(coachService)
+	coachHandler.RegisterRoutes(protected)
 
 	srv := &http.Server{Addr: ":" + cfg.Port, Handler: r}
 	go func() {
