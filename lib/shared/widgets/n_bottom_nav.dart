@@ -15,11 +15,12 @@ class NBottomNav extends StatelessWidget {
   final ValueChanged<int> onTap;
 
   static const _items = [
-    (icon: Icons.home_outlined,        activeIcon: Icons.home_rounded,        label: 'Inicio'),
-    (icon: Icons.swap_horiz_rounded,   activeIcon: Icons.swap_horiz_rounded,  label: 'Movimientos'),
-    (icon: Icons.auto_awesome_outlined, activeIcon: Icons.auto_awesome,       label: 'IA'),
-    (icon: Icons.adjust_rounded,       activeIcon: Icons.adjust_rounded,      label: 'Metas'),
-    (icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded,    label: 'Perfil'),
+    (icon: Icons.home_outlined,          activeIcon: Icons.home_rounded,          label: 'Inicio'),
+    (icon: Icons.pie_chart_outline_rounded, activeIcon: Icons.pie_chart_rounded,  label: 'Presupuesto'),
+    (icon: Icons.swap_horiz_rounded,     activeIcon: Icons.swap_horiz_rounded,    label: 'Movimientos'),
+    (icon: Icons.auto_awesome_outlined,  activeIcon: Icons.auto_awesome,          label: 'IA'),
+    (icon: Icons.adjust_rounded,         activeIcon: Icons.adjust_rounded,        label: 'Metas'),
+    (icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded,        label: 'Perfil'),
   ];
 
   @override
@@ -46,7 +47,7 @@ class NBottomNav extends StatelessWidget {
               children: List.generate(_items.length, (i) {
                 final item = _items[i];
                 final isActive = i == currentIndex;
-                final isAI = i == 2;
+                final isAI = i == 3;
 
                 return Expanded(
                   child: GestureDetector(

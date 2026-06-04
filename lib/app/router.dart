@@ -10,7 +10,7 @@ class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.child});
   final Widget child;
 
-  static const _routes = ['/', '/transactions', '/coach', '/goals', '/profile'];
+  static const _routes = ['/', '/budget', '/transactions', '/coach', '/goals', '/profile'];
 
   int _indexFromRoute(String location) {
     final idx = _routes.indexOf(location);
