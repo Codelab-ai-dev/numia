@@ -3,63 +3,63 @@ import 'message.dart';
 
 class AiConversation extends Equatable {
   final String id;
-  final String userId;
   final String? title;
   final List<Message> messages;
-  final Map<String, dynamic>? contextSnapshot;
   final int messageCount;
-  final DateTime createdAt;
   final DateTime updatedAt;
 
   const AiConversation({
     required this.id,
-    required this.userId,
     this.title,
     this.messages = const [],
-    this.contextSnapshot,
     this.messageCount = 0,
-    required this.createdAt,
     required this.updatedAt,
   });
 
-  factory AiConversation.fromJson(Map<String, dynamic> json) {
-    final rawMessages = json['messages'] as List<dynamic>? ?? [];
+  /// Parses a conversation list item from GET /api/v1/coach/conversations
+  /// Response: {"id":"...","title":"...","message_count":5,"updated_at":"..."}
+  factory AiConversation.fromListJson(Map<String, dynamic> json) {
     return AiConversation(
       id: json['id'] as String,
-      userId: json['user_id'] as String,
       title: json['title'] as String?,
-      messages: rawMessages
-          .map((m) => Message(
-                id: m['id'] as String? ?? '',
-                content: m['content'] as String? ?? '',
-                role: m['role'] == 'user' ? MessageRole.user : MessageRole.assistant,
-                timestamp: m['timestamp'] != null
-                    ? DateTime.parse(m['timestamp'] as String)
-                    : DateTime.now(),
-              ))
-          .toList(),
-      contextSnapshot: json['context_snapshot'] as Map<String, dynamic>?,
       messageCount: json['message_count'] as int? ?? 0,
-      createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
   }
 
-  Map<String, dynamic> toJson() => {
-        'user_id': userId,
-        'title': title,
-        'messages': messages
-            .map((m) => {
-                  'id': m.id,
-                  'content': m.content,
-                  'role': m.role == MessageRole.user ? 'user' : 'assistant',
-                  'timestamp': m.timestamp.toIso8601String(),
-                })
-            .toList(),
-        'context_snapshot': contextSnapshot,
-        'message_count': messages.length,
-      };
+  /// Builds a full conversation from ID + messages array
+  /// GET /api/v1/coach/conversations/$id returns array of
+  /// {"role":"user","content":"...","timestamp":"..."}
+  factory AiConversation.fromMessages(
+      String id, List<dynamic> rawMessages) {
+    final messages = rawMessages
+        .map((m) => Message(
+              id: '',
+              content: m['content'] as String? ?? '',
+              role: m['role'] == 'user'
+                  ? MessageRole.user
+                  : MessageRole.assistant,
+              timestamp: m['timestamp'] != null
+                  ? DateTime.parse(m['timestamp'] as String)
+                  : DateTime.now(),
+            ))
+        .toList();
+
+    return AiConversation(
+      id: id,
+      messages: messages,
+      messageCount: messages.length,
+      updatedAt: messages.isNotEmpty
+          ? messages.last.timestamp
+          : DateTime.now(),
+    );
+  }
+
+  /// Legacy fromJson for backward compatibility
+  factory AiConversation.fromJson(Map<String, dynamic> json) {
+    return AiConversation.fromListJson(json);
+  }
 
   @override
-  List<Object?> get props => [id, userId, messageCount];
+  List<Object?> get props => [id, messageCount];
 }

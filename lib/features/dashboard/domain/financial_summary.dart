@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../core/json_helpers.dart';
 
 class FinancialSummary extends Equatable {
   final double totalAssets;
@@ -38,7 +39,7 @@ class FinancialSummary extends Equatable {
         unreadInsights: 0,
       );
 
-  /// Parses the JSON from `get_dashboard_summary` RPC
+  /// Parses the JSON from GET /api/v1/dashboard/summary
   factory FinancialSummary.fromRpc(Map<String, dynamic> json) {
     final nw = json['net_worth'] as Map<String, dynamic>? ?? {};
     final ms = json['monthly_summary'] as Map<String, dynamic>? ?? {};
@@ -46,12 +47,12 @@ class FinancialSummary extends Equatable {
     final debts = json['active_debts'] as List<dynamic>? ?? [];
 
     return FinancialSummary(
-      totalAssets: (nw['total_assets'] as num?)?.toDouble() ?? 0,
-      totalDebt: (nw['total_debt'] as num?)?.toDouble() ?? 0,
-      netWorth: (nw['net_worth'] as num?)?.toDouble() ?? 0,
-      monthIncome: (ms['income'] as num?)?.toDouble() ?? 0,
-      monthExpenses: (ms['expenses'] as num?)?.toDouble() ?? 0,
-      monthNet: (ms['net'] as num?)?.toDouble() ?? 0,
+      totalAssets: toDouble(nw['total_assets']),
+      totalDebt: toDouble(nw['total_debt']),
+      netWorth: toDouble(nw['net_worth']),
+      monthIncome: toDouble(ms['income']),
+      monthExpenses: toDouble(ms['expenses']),
+      monthNet: toDouble(ms['net']),
       txCount: (ms['tx_count'] as num?)?.toInt() ?? 0,
       activeGoals: goals
           .map((g) => ActiveGoalSummary.fromJson(g as Map<String, dynamic>))
@@ -90,8 +91,8 @@ class ActiveGoalSummary extends Equatable {
     return ActiveGoalSummary(
       id: json['id'] as String,
       name: json['name'] as String,
-      targetAmount: (json['target_amount'] as num).toDouble(),
-      currentAmount: (json['current_amount'] as num).toDouble(),
+      targetAmount: toDouble(json['target_amount']),
+      currentAmount: toDouble(json['current_amount']),
       emoji: json['emoji'] as String?,
     );
   }
@@ -117,10 +118,8 @@ class ActiveDebtSummary extends Equatable {
     return ActiveDebtSummary(
       id: json['id'] as String,
       name: json['name'] as String,
-      totalAmount: (json['total_amount'] as num).toDouble(),
-      monthlyPayment: json['monthly_payment'] != null
-          ? (json['monthly_payment'] as num).toDouble()
-          : null,
+      totalAmount: toDouble(json['total_amount']),
+      monthlyPayment: toDoubleOrNull(json['monthly_payment']),
     );
   }
 
@@ -141,8 +140,8 @@ class CategoryBreakdown extends Equatable {
 
   factory CategoryBreakdown.fromJson(Map<String, dynamic> json) {
     return CategoryBreakdown(
-      name: json['effective_category'] as String? ?? 'Sin categoría',
-      amount: (json['total'] as num?)?.toDouble() ?? 0,
+      name: json['category'] as String? ?? 'Sin categoría',
+      amount: toDouble(json['total']),
       txCount: (json['tx_count'] as num?)?.toInt() ?? 0,
     );
   }

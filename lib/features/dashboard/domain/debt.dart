@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../core/json_helpers.dart';
 
 class Debt extends Equatable {
   final String id;
@@ -43,16 +44,10 @@ class Debt extends Equatable {
       type: json['type'] as String,
       name: json['name'] as String,
       institution: json['institution'] as String?,
-      totalAmount: (json['total_amount'] as num).toDouble(),
-      originalAmount: json['original_amount'] != null
-          ? (json['original_amount'] as num).toDouble()
-          : null,
-      monthlyPayment: json['monthly_payment'] != null
-          ? (json['monthly_payment'] as num).toDouble()
-          : null,
-      interestRate: json['interest_rate'] != null
-          ? (json['interest_rate'] as num).toDouble()
-          : null,
+      totalAmount: toDouble(json['total_amount']),
+      originalAmount: toDoubleOrNull(json['original_amount']),
+      monthlyPayment: toDoubleOrNull(json['monthly_payment']),
+      interestRate: toDoubleOrNull(json['interest_rate']),
       isActive: json['is_active'] as bool? ?? true,
       notes: json['notes'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),

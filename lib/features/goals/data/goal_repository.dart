@@ -1,32 +1,22 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/api_client.dart';
 import '../domain/goal.dart';
 
 class GoalRepository {
   GoalRepository(this._client);
-  final SupabaseClient _client;
-
-  String get _uid => _client.auth.currentUser!.id;
+  final ApiClient _client;
 
   Future<List<Goal>> getGoals({String? status}) async {
-    var query = _client
-        .from('goals')
-        .select()
-        .eq('user_id', _uid)
-        .order('priority')
-        .order('created_at', ascending: false);
+    final queryParams = <String, dynamic>{};
+    if (status != null) queryParams['status'] = status;
 
-    if (status != null) {
-      query = _client
-          .from('goals')
-          .select()
-          .eq('user_id', _uid)
-          .eq('status', status)
-          .order('priority')
-          .order('created_at', ascending: false);
-    }
-
-    final data = await query;
-    return (data as List).map((e) => Goal.fromJson(e)).toList();
+    final response = await _client.dio.get(
+      '/api/v1/goals',
+      queryParameters: queryParams,
+    );
+    final data = response.data as List;
+    return data
+        .map((e) => Goal.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<Goal> addGoal({
@@ -39,40 +29,30 @@ class GoalRepository {
     String? emoji,
     String? notes,
   }) async {
-    final data = await _client.from('goals').insert({
-      'user_id': _uid,
+    final response = await _client.dio.post('/api/v1/goals', data: {
       'type': type,
       'name': name,
       'target_amount': targetAmount,
-      'current_amount': 0,
       'monthly_contribution': monthlyContribution,
       'target_date': targetDate?.toIso8601String().split('T').first,
       'priority': priority,
       'emoji': emoji,
       'notes': notes,
-    }).select().single();
-
-    return Goal.fromJson(data);
+    });
+    return Goal.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<void> updateGoal(String id, Map<String, dynamic> updates) async {
-    await _client.from('goals').update(updates).eq('id', id);
+    await _client.dio.put('/api/v1/goals/$id', data: updates);
   }
 
   Future<void> addContribution(String goalId, double amount) async {
-    final goal = await _client
-        .from('goals')
-        .select('current_amount')
-        .eq('id', goalId)
-        .single();
-
-    final current = (goal['current_amount'] as num).toDouble();
-    await _client.from('goals').update({
-      'current_amount': current + amount,
-    }).eq('id', goalId);
+    await _client.dio.post('/api/v1/goals/$goalId/contribute', data: {
+      'amount': amount,
+    });
   }
 
   Future<void> deleteGoal(String id) async {
-    await _client.from('goals').delete().eq('id', id);
+    await _client.dio.delete('/api/v1/goals/$id');
   }
 }

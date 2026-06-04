@@ -1,35 +1,31 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:dio/dio.dart';
+import '../../../core/api_client.dart';
 import '../domain/auth_models.dart';
 
 class UserRepository {
   UserRepository(this._client);
-  final SupabaseClient _client;
+  final ApiClient _client;
 
   Future<UserProfile?> getProfile() async {
-    final uid = _client.auth.currentUser?.id;
-    if (uid == null) return null;
-
-    final data = await _client
-        .from('users')
-        .select()
-        .eq('id', uid)
-        .maybeSingle();
-
-    if (data == null) return null;
-    return UserProfile.fromJson(data);
+    try {
+      final response = await _client.dio.get('/api/v1/users/me');
+      return UserProfile.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) return null;
+      rethrow;
+    }
   }
 
   Future<void> updateProfile({
     String? fullName,
     String? avatarUrl,
   }) async {
-    final uid = _client.auth.currentUser!.id;
     final updates = <String, dynamic>{};
     if (fullName != null) updates['full_name'] = fullName;
     if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
     if (updates.isEmpty) return;
 
-    await _client.from('users').update(updates).eq('id', uid);
+    await _client.dio.put('/api/v1/users/me', data: updates);
   }
 
   Future<void> completeOnboarding({
@@ -38,11 +34,11 @@ class UserRepository {
     DateTime? birthDate,
     String? occupation,
   }) async {
-    await _client.rpc('complete_onboarding', params: {
-      'p_full_name': fullName,
-      'p_country': country,
-      'p_birth_date': birthDate?.toIso8601String().split('T').first,
-      'p_occupation': occupation,
+    await _client.dio.post('/api/v1/users/onboarding', data: {
+      'full_name': fullName,
+      'country': country,
+      'birth_date': birthDate?.toIso8601String().split('T').first,
+      'occupation': occupation,
     });
   }
 }

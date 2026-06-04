@@ -1,29 +1,24 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/api_client.dart';
 import '../domain/account.dart';
 import '../domain/debt.dart';
 import '../domain/financial_summary.dart';
 
 class DashboardRepository {
   DashboardRepository(this._client);
-  final SupabaseClient _client;
-
-  String get _uid => _client.auth.currentUser!.id;
+  final ApiClient _client;
 
   Future<FinancialSummary> getSummary() async {
-    final data = await _client.rpc('get_dashboard_summary');
-    if (data == null) return FinancialSummary.empty();
-    return FinancialSummary.fromRpc(data as Map<String, dynamic>);
+    final response = await _client.dio.get('/api/v1/dashboard/summary');
+    if (response.data == null) return FinancialSummary.empty();
+    return FinancialSummary.fromRpc(response.data as Map<String, dynamic>);
   }
 
   Future<List<Account>> getAccounts() async {
-    final data = await _client
-        .from('accounts')
-        .select()
-        .eq('user_id', _uid)
-        .eq('is_active', true)
-        .order('created_at');
-
-    return (data as List).map((e) => Account.fromJson(e)).toList();
+    final response = await _client.dio.get('/api/v1/accounts');
+    final data = response.data as List;
+    return data
+        .map((e) => Account.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<Account> addAccount({
@@ -32,39 +27,30 @@ class DashboardRepository {
     double balance = 0,
     double? creditLimit,
   }) async {
-    final data = await _client.from('accounts').insert({
-      'user_id': _uid,
+    final response = await _client.dio.post('/api/v1/accounts', data: {
       'name': name,
       'type': type,
       'balance': balance,
       'credit_limit': creditLimit,
-    }).select().single();
-
-    return Account.fromJson(data);
+    });
+    return Account.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<void> updateAccountBalance(String id, double balance) async {
-    await _client.from('accounts').update({'balance': balance}).eq('id', id);
+    await _client.dio.put('/api/v1/accounts/$id', data: {
+      'balance': balance,
+    });
   }
 
   Future<List<Debt>> getDebts({bool activeOnly = true}) async {
-    var query = _client
-        .from('debts')
-        .select()
-        .eq('user_id', _uid)
-        .order('created_at', ascending: false);
-
-    if (activeOnly) {
-      query = _client
-          .from('debts')
-          .select()
-          .eq('user_id', _uid)
-          .eq('is_active', true)
-          .order('created_at', ascending: false);
-    }
-
-    final data = await query;
-    return (data as List).map((e) => Debt.fromJson(e)).toList();
+    final response = await _client.dio.get(
+      '/api/v1/debts',
+      queryParameters: {'active_only': activeOnly},
+    );
+    final data = response.data as List;
+    return data
+        .map((e) => Debt.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<Debt> addDebt({
@@ -77,8 +63,7 @@ class DashboardRepository {
     double? interestRate,
     String? notes,
   }) async {
-    final data = await _client.from('debts').insert({
-      'user_id': _uid,
+    final response = await _client.dio.post('/api/v1/debts', data: {
       'type': type,
       'name': name,
       'total_amount': totalAmount,
@@ -87,12 +72,11 @@ class DashboardRepository {
       'monthly_payment': monthlyPayment,
       'interest_rate': interestRate,
       'notes': notes,
-    }).select().single();
-
-    return Debt.fromJson(data);
+    });
+    return Debt.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<void> updateDebt(String id, Map<String, dynamic> updates) async {
-    await _client.from('debts').update(updates).eq('id', id);
+    await _client.dio.put('/api/v1/debts/$id', data: updates);
   }
 }

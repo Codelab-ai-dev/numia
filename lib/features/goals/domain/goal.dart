@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../core/json_helpers.dart';
 
 class Goal extends Equatable {
   final String id;
@@ -44,11 +45,9 @@ class Goal extends Equatable {
       userId: json['user_id'] as String,
       type: json['type'] as String,
       name: json['name'] as String,
-      targetAmount: (json['target_amount'] as num).toDouble(),
-      currentAmount: (json['current_amount'] as num).toDouble(),
-      monthlyContribution: json['monthly_contribution'] != null
-          ? (json['monthly_contribution'] as num).toDouble()
-          : null,
+      targetAmount: toDouble(json['target_amount']),
+      currentAmount: toDouble(json['current_amount']),
+      monthlyContribution: toDoubleOrNull(json['monthly_contribution']),
       targetDate: json['target_date'] != null
           ? DateTime.parse(json['target_date'] as String)
           : null,
