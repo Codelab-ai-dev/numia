@@ -11,12 +11,14 @@ import (
 
 	"numia-api/internal/account"
 	"numia-api/internal/auth"
+	"numia-api/internal/budget"
 	"numia-api/internal/coach"
 	"numia-api/internal/config"
 	"numia-api/internal/dashboard"
 	"numia-api/internal/database"
 	"numia-api/internal/database/sqlc"
 	"numia-api/internal/debt"
+	"numia-api/internal/device"
 	"numia-api/internal/goal"
 	"numia-api/internal/middleware"
 	"numia-api/internal/transaction"
@@ -95,6 +97,17 @@ func main() {
 	coachService := coach.NewService(queries, groqClient)
 	coachHandler := coach.NewHandler(coachService)
 	coachHandler.RegisterRoutes(protected)
+
+	// Budget
+	fcmClient := budget.NewFCMClient(cfg.FirebaseCredentialsPath)
+	budgetService := budget.NewService(queries, fcmClient)
+	budgetHandler := budget.NewHandler(budgetService)
+	budgetHandler.RegisterRoutes(protected)
+
+	// Devices
+	deviceService := device.NewService(queries)
+	deviceHandler := device.NewHandler(deviceService)
+	deviceHandler.RegisterRoutes(protected)
 
 	srv := &http.Server{Addr: ":" + cfg.Port, Handler: r}
 	go func() {
