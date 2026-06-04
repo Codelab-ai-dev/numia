@@ -1,22 +1,27 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/supabase_client.dart';
+import '../../../core/api_client.dart';
+import '../../../core/providers.dart';
+import '../../../core/token_storage.dart';
 import '../../../shared/constants/n_colors.dart';
 import '../../../shared/constants/n_spacing.dart';
 import '../../../shared/constants/n_typography.dart';
 import '../../../shared/widgets/n_button.dart';
 import '../../../shared/widgets/n_gradient_bg.dart';
 
-class RegisterScreen extends StatefulWidget {
+class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _emailCtrl = TextEditingController();
+  final _nameCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -24,11 +29,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePass = true;
   bool _obscureConfirm = true;
   String? _errorMsg;
-  bool _success = false;
 
   @override
   void dispose() {
     _emailCtrl.dispose();
+    _nameCtrl.dispose();
     _passCtrl.dispose();
     _confirmCtrl.dispose();
     super.dispose();
@@ -41,22 +46,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final res = await supabase.auth.signUp(
-        email: _emailCtrl.text.trim(),
-        password: _passCtrl.text,
+      final ApiClient apiClient = ref.read(apiClientProvider);
+      final TokenStorage tokenStorage = ref.read(tokenStorageProvider);
+
+      final response = await apiClient.dio.post(
+        '/api/v1/auth/register',
+        data: {
+          'email': _emailCtrl.text.trim(),
+          'password': _passCtrl.text,
+          'full_name': _nameCtrl.text.trim(),
+        },
       );
 
-      if (!mounted) return;
+      await tokenStorage.saveTokens(
+        response.data['access_token'] as String,
+        response.data['refresh_token'] as String,
+      );
 
-      if (res.session != null) {
-        context.go('/');
-      } else {
-        setState(() => _success = true);
+      ref.read(authStateProvider.notifier).state = true;
+
+      if (mounted) context.go('/');
+    } on DioException catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMsg = _parseError(e);
+        });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMsg = _parseError(e.toString());
+          _errorMsg = 'Error al crear cuenta. Intenta de nuevo.';
         });
       }
     } finally {
@@ -64,17 +83,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  String _parseError(String raw) {
-    if (raw.contains('already registered') || raw.contains('already exists')) {
-      return 'Ya existe una cuenta con ese correo';
+  String _parseError(DioException e) {
+    final data = e.response?.data;
+    if (data is Map) {
+      final errorBlock = data['error'];
+      if (errorBlock is Map) {
+        final code = errorBlock['code'] as String?;
+        if (code == 'EMAIL_TAKEN') {
+          return 'Ya existe una cuenta con ese correo';
+        }
+        final message = errorBlock['message'] as String?;
+        if (message != null && message.isNotEmpty) return message;
+      }
     }
-    if (raw.contains('valid email')) {
-      return 'Ingresa un correo válido';
-    }
-    if (raw.contains('password')) {
-      return 'La contraseña debe tener al menos 6 caracteres';
-    }
-    if (raw.contains('network')) {
+    final statusCode = e.response?.statusCode;
+    if (statusCode == 409) return 'Ya existe una cuenta con ese correo';
+    if (e.type == DioExceptionType.connectionError ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout) {
       return 'Sin conexión a internet';
     }
     return 'Error al crear cuenta. Intenta de nuevo.';
@@ -82,8 +108,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_success) return _buildSuccessView();
-
     final ct = NColorTheme.of(context);
 
     return Scaffold(
@@ -161,6 +185,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) return 'Ingresa tu correo';
                       if (!v.contains('@') || !v.contains('.')) return 'Correo inválido';
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: NSpacing.sp5),
+
+                  // Full name
+                  Text('NOMBRE COMPLETO', style: NTypography.overline.copyWith(color: ct.textTertiary)),
+                  const SizedBox(height: NSpacing.sp2),
+                  TextFormField(
+                    controller: _nameCtrl,
+                    keyboardType: TextInputType.name,
+                    autocorrect: false,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: ct.textPrimary,
+                      fontSize: 15,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Tu nombre completo',
+                      prefixIcon: Icon(Icons.person_outline, size: 20, color: ct.textTertiary),
+                    ),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Ingresa tu nombre';
+                      if (v.trim().length < 2) return 'Mínimo 2 caracteres';
                       return null;
                     },
                   ),
@@ -269,65 +317,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: NSpacing.sp10),
                 ],
               ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSuccessView() {
-    final ct = NColorTheme.of(context);
-
-    return Scaffold(
-      backgroundColor: ct.bg,
-      body: NGradientBg(
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: NSpacing.pageH),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: NColors.successSoft,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: NColors.success.withValues(alpha: 0.3)),
-                  ),
-                  child: const Icon(Icons.mark_email_read_outlined, color: NColors.success, size: 32),
-                ),
-                const SizedBox(height: NSpacing.sp6),
-                Text(
-                  'Revisa tu correo',
-                  style: NTypography.h2.copyWith(color: ct.textPrimary),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: NSpacing.sp3),
-                Text(
-                  'Enviamos un enlace de confirmación a',
-                  style: NTypography.body.copyWith(color: ct.textSecondary),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: NSpacing.sp1),
-                Text(
-                  _emailCtrl.text.trim(),
-                  style: NTypography.title.copyWith(color: ct.accent1),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: NSpacing.sp3),
-                Text(
-                  'Confirma tu correo y luego inicia sesión',
-                  style: NTypography.caption.copyWith(color: ct.textSecondary),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: NSpacing.sp10),
-                NButton(
-                  label: 'Ir a iniciar sesión',
-                  onPressed: () => context.go('/login'),
-                ),
-              ],
             ),
           ),
         ),

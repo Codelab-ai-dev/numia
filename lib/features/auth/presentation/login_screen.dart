@@ -1,8 +1,12 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../app/router.dart' show skipAuth;
-import '../../../core/supabase_client.dart';
+import '../../../core/api_client.dart';
+import '../../../core/providers.dart';
+import '../../../core/token_storage.dart';
 import '../../../shared/constants/n_colors.dart';
 import '../../../shared/constants/n_spacing.dart';
 import '../../../shared/constants/n_typography.dart';
@@ -10,14 +14,14 @@ import '../../../shared/widgets/n_button.dart';
 import '../../../shared/widgets/n_gradient_bg.dart';
 import '../../../shared/widgets/n_gradient_text.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -39,15 +43,35 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await supabase.auth.signInWithPassword(
-        email: _emailCtrl.text.trim(),
-        password: _passCtrl.text,
+      final ApiClient apiClient = ref.read(apiClientProvider);
+      final TokenStorage tokenStorage = ref.read(tokenStorageProvider);
+
+      final response = await apiClient.dio.post(
+        '/api/v1/auth/login',
+        data: {
+          'email': _emailCtrl.text.trim(),
+          'password': _passCtrl.text,
+        },
       );
+
+      await tokenStorage.saveTokens(
+        response.data['access_token'] as String,
+        response.data['refresh_token'] as String,
+      );
+
+      ref.read(authStateProvider.notifier).state = true;
+
       if (mounted) context.go('/');
+    } on DioException catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMsg = _parseError(e);
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMsg = _parseError(e.toString());
+          _errorMsg = 'Error al iniciar sesión. Intenta de nuevo.';
         });
       }
     } finally {
@@ -55,14 +79,24 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  String _parseError(String raw) {
-    if (raw.contains('Invalid login credentials')) {
-      return 'Correo o contraseña incorrectos';
+  String _parseError(DioException e) {
+    final data = e.response?.data;
+    if (data is Map) {
+      final errorBlock = data['error'];
+      if (errorBlock is Map) {
+        final code = errorBlock['code'] as String?;
+        if (code == 'INVALID_CREDENTIALS') {
+          return 'Correo o contraseña incorrectos';
+        }
+        final message = errorBlock['message'] as String?;
+        if (message != null && message.isNotEmpty) return message;
+      }
     }
-    if (raw.contains('Email not confirmed')) {
-      return 'Confirma tu correo antes de iniciar sesión';
-    }
-    if (raw.contains('network')) {
+    final statusCode = e.response?.statusCode;
+    if (statusCode == 401) return 'Correo o contraseña incorrectos';
+    if (e.type == DioExceptionType.connectionError ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout) {
       return 'Sin conexión a internet';
     }
     return 'Error al iniciar sesión. Intenta de nuevo.';
