@@ -5,6 +5,9 @@ import 'api_client.dart';
 import 'token_storage.dart';
 import '../features/auth/data/user_repository.dart';
 import '../features/auth/domain/auth_models.dart';
+import '../features/budget/data/budget_repository.dart';
+import '../features/budget/domain/budget.dart';
+import '../features/budget/domain/budget_summary.dart';
 import '../features/coach/data/conversation_repository.dart';
 import '../features/dashboard/data/dashboard_repository.dart';
 import '../features/dashboard/domain/account.dart';
@@ -17,6 +20,7 @@ import '../features/transactions/domain/transaction.dart';
 import '../app/router.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/register_screen.dart';
+import '../features/budget/presentation/budget_screen.dart';
 import '../features/coach/presentation/coach_screen.dart';
 import '../features/dashboard/presentation/dashboard_screen.dart';
 import '../features/goals/presentation/goals_screen.dart';
@@ -52,6 +56,10 @@ final dashboardRepositoryProvider = Provider<DashboardRepository>(
 
 final conversationRepositoryProvider = Provider<ConversationRepository>(
   (ref) => ConversationRepository(ref.watch(apiClientProvider)),
+);
+
+final budgetRepositoryProvider = Provider<BudgetRepository>(
+  (ref) => BudgetRepository(ref.watch(apiClientProvider)),
 );
 
 // ─── Data Providers ───────────────────────────────────────────
@@ -108,6 +116,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, child) => AppShell(child: child),
         routes: [
           GoRoute(path: '/', builder: (_, __) => const DashboardScreen()),
+          GoRoute(path: '/budget', builder: (_, __) => const BudgetScreen()),
           GoRoute(path: '/transactions', builder: (_, __) => const TransactionsScreen()),
           GoRoute(path: '/coach', builder: (_, __) => const CoachScreen()),
           GoRoute(path: '/goals', builder: (_, __) => const GoalsScreen()),
@@ -146,4 +155,18 @@ final categoryBreakdownProvider = FutureProvider<List<CategoryBreakdown>>((ref) 
 final goalsProvider = FutureProvider<List<Goal>>((ref) {
   ref.watch(authStateProvider);
   return ref.watch(goalRepositoryProvider).getGoals(status: 'active');
+});
+
+final budgetProvider = FutureProvider<Budget?>((ref) {
+  ref.watch(authStateProvider);
+  return ref.watch(budgetRepositoryProvider).getBudget();
+});
+
+final budgetSummaryProvider = FutureProvider<BudgetSummary?>((ref) async {
+  ref.watch(authStateProvider);
+  try {
+    return await ref.watch(budgetRepositoryProvider).getSummary();
+  } catch (_) {
+    return null;
+  }
 });
