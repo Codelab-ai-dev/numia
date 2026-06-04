@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"numia-api/internal/config"
+	"numia-api/internal/database"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,9 +21,19 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
+	db, err := database.Connect(cfg.DBURL)
+	if err != nil {
+		log.Fatalf("failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
 	r := gin.Default()
 	r.GET("/api/v1/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		if err := db.Ping(c.Request.Context()); err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "db": "disconnected"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "ok", "db": "connected"})
 	})
 
 	srv := &http.Server{Addr: ":" + cfg.Port, Handler: r}
