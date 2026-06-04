@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/router.dart';
 import '../../../core/providers.dart';
-import '../../../core/supabase_client.dart';
+import '../../../core/api_client.dart';
+import '../../../core/token_storage.dart';
 import '../../../core/theme_provider.dart';
 import '../../../shared/constants/n_colors.dart';
 import '../../../shared/constants/n_spacing.dart';
@@ -326,11 +327,11 @@ class _LogoutButton extends ConsumerWidget {
       label: 'Cerrar sesión',
       variant: NButtonVariant.danger,
       icon: const Icon(Icons.logout_rounded, size: 18, color: NColors.error),
-      onPressed: () => _confirmLogout(context),
+      onPressed: () => _confirmLogout(context, ref),
     );
   }
 
-  void _confirmLogout(BuildContext context) {
+  void _confirmLogout(BuildContext context, WidgetRef ref) {
     final ct = NColorTheme.of(context);
     showDialog(
       context: context,
@@ -360,7 +361,20 @@ class _LogoutButton extends ConsumerWidget {
             onPressed: () async {
               Navigator.of(ctx).pop();
               skipAuth = false;
-              await supabase.auth.signOut();
+              final tokenStorage = ref.read(tokenStorageProvider);
+              final apiClient = ref.read(apiClientProvider);
+              final refreshToken = await tokenStorage.getRefreshToken();
+              if (refreshToken != null) {
+                try {
+                  await apiClient.dio.post('/api/v1/auth/logout', data: {
+                    'refresh_token': refreshToken,
+                  });
+                } catch (_) {
+                  // Ignore errors — still clear local state
+                }
+              }
+              await tokenStorage.clearTokens();
+              ref.read(authStateProvider.notifier).state = false;
             },
             child: Text(
               'Cerrar sesión',
