@@ -9,8 +9,11 @@ import (
 	"syscall"
 	"time"
 
+	"numia-api/internal/auth"
 	"numia-api/internal/config"
 	"numia-api/internal/database"
+	"numia-api/internal/database/sqlc"
+	"numia-api/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,6 +31,8 @@ func main() {
 	defer db.Close()
 
 	r := gin.Default()
+	r.Use(middleware.CORS())
+
 	r.GET("/api/v1/health", func(c *gin.Context) {
 		if err := db.Ping(c.Request.Context()); err != nil {
 			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "db": "disconnected"})
@@ -35,6 +40,19 @@ func main() {
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "db": "connected"})
 	})
+
+	api := r.Group("/api/v1")
+
+	queries := sqlc.New(db.Pool)
+
+	// Auth (public)
+	authService := auth.NewService(queries, cfg.JWTSecret)
+	authHandler := auth.NewHandler(authService)
+	authHandler.RegisterRoutes(api)
+
+	// Protected group for future features
+	protected := api.Group("", middleware.AuthRequired(cfg.JWTSecret))
+	_ = protected // will be used in next tasks
 
 	srv := &http.Server{Addr: ":" + cfg.Port, Handler: r}
 	go func() {
