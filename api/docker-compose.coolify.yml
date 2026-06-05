@@ -19,21 +19,12 @@ services:
       timeout: 3s
       retries: 5
 
-  migrate:
-    image: migrate/migrate
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - ./internal/database/migrations:/migrations
-    command: ["-path", "/migrations", "-database", "postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=disable", "up"]
-
   api:
     build: .
     restart: unless-stopped
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      db:
+        condition: service_healthy
     environment:
       - DB_URL=postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=disable
       - JWT_SECRET=${JWT_SECRET}

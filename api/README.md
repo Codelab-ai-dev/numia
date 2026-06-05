@@ -41,11 +41,11 @@ cd api
 docker compose up -d --build
 ```
 
-Esto levanta cuatro servicios:
+Esto levanta tres servicios:
 
 - **db** — Postgres 16 (volumen `pgdata`, expuesto solo en `127.0.0.1:5433`)
-- **migrate** — aplica las migraciones de `internal/database/migrations` y termina
-- **api** — el binario Go en `127.0.0.1:8080` (arranca tras migrar)
+- **api** — el binario Go en `127.0.0.1:8080`. Aplica las migraciones automáticamente
+  al arrancar (entrypoint) y luego inicia el servidor.
 - **caddy** — reverse proxy en los puertos `80`/`443` hacia `api:8080`
 
 ## Operación
@@ -76,7 +76,7 @@ cd api
 docker compose up -d --build
 ```
 
-Las migraciones se aplican automáticamente al levantar (servicio `migrate`).
+Las migraciones se aplican automáticamente al arrancar la API (entrypoint del contenedor).
 
 ## Dominio y HTTPS
 
@@ -108,7 +108,7 @@ En la UI de Coolify:
    de Traefik y el certificado TLS automáticamente.
 
 El `build: .` se resuelve relativo al compose, es decir `api/`, así que el `Dockerfile`
-se construye correctamente. Las migraciones siguen corriendo solas (servicio `migrate`).
+se construye correctamente. Las migraciones corren solas al arrancar la API (entrypoint).
 
 Para actualizar, Coolify redepliega al hacer push (o manualmente con el botón **Deploy**).
 
