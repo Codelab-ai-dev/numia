@@ -211,3 +211,49 @@ func (q *Queries) SumExpensesByCategoryID(ctx context.Context, arg SumExpensesBy
 	err := row.Scan(&total_spent)
 	return total_spent, err
 }
+
+const updateExpense = `-- name: UpdateExpense :one
+UPDATE expenses
+SET category_id = $3,
+    amount = $4,
+    description = $6,
+    subcategory = $7,
+    expense_date = $5,
+    updated_at = NOW()
+WHERE id = $1 AND user_id = $2
+RETURNING id, user_id, category_id, amount, description, subcategory, expense_date, created_at
+`
+
+type UpdateExpenseParams struct {
+	ID          pgtype.UUID    `json:"id"`
+	UserID      pgtype.UUID    `json:"user_id"`
+	CategoryID  pgtype.UUID    `json:"category_id"`
+	Amount      pgtype.Numeric `json:"amount"`
+	ExpenseDate pgtype.Date    `json:"expense_date"`
+	Description pgtype.Text    `json:"description"`
+	Subcategory pgtype.Text    `json:"subcategory"`
+}
+
+func (q *Queries) UpdateExpense(ctx context.Context, arg UpdateExpenseParams) (Expense, error) {
+	row := q.db.QueryRow(ctx, updateExpense,
+		arg.ID,
+		arg.UserID,
+		arg.CategoryID,
+		arg.Amount,
+		arg.ExpenseDate,
+		arg.Description,
+		arg.Subcategory,
+	)
+	var i Expense
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.CategoryID,
+		&i.Amount,
+		&i.Description,
+		&i.Subcategory,
+		&i.ExpenseDate,
+		&i.CreatedAt,
+	)
+	return i, err
+}

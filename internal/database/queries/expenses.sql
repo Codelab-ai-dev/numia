@@ -12,6 +12,17 @@ INSERT INTO expenses (user_id, category_id, amount, description, subcategory, ex
 VALUES ($1, $2, $3, sqlc.narg('description'), sqlc.narg('subcategory'), $4)
 RETURNING *;
 
+-- name: UpdateExpense :one
+UPDATE expenses
+SET category_id = $3,
+    amount = $4,
+    description = sqlc.narg('description'),
+    subcategory = sqlc.narg('subcategory'),
+    expense_date = $5,
+    updated_at = NOW()
+WHERE id = $1 AND user_id = $2
+RETURNING *;
+
 -- name: DeleteExpense :exec
 DELETE FROM expenses WHERE id = $1 AND user_id = $2;
 

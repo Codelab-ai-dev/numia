@@ -2,6 +2,7 @@ package budget
 
 import (
 	"net/http"
+	"time"
 
 	"numia-api/internal/middleware"
 
@@ -36,6 +37,7 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
 	// Expenses
 	g.GET("/expenses", h.listExpenses)
 	g.POST("/expenses", h.createExpense)
+	g.PUT("/expenses/:id", h.updateExpense)
 	g.DELETE("/expenses/:id", h.deleteExpense)
 
 	// Summary
@@ -123,7 +125,20 @@ func (h *Handler) setAllocations(c *gin.Context) {
 
 func (h *Handler) listExpenses(c *gin.Context) {
 	userID := middleware.GetUserID(c)
-	expenses, err := h.s.ListExpenses(c.Request.Context(), userID)
+
+	var start, end time.Time
+	if s := c.Query("start"); s != "" {
+		if t, err := time.Parse("2006-01-02", s); err == nil {
+			start = t
+		}
+	}
+	if e := c.Query("end"); e != "" {
+		if t, err := time.Parse("2006-01-02", e); err == nil {
+			end = t
+		}
+	}
+
+	expenses, err := h.s.ListExpenses(c.Request.Context(), userID, start, end)
 	if err != nil {
 		middleware.RespondError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to list expenses")
 		return
@@ -144,6 +159,26 @@ func (h *Handler) createExpense(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, expense)
+}
+
+func (h *Handler) updateExpense(c *gin.Context) {
+	expID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		middleware.RespondError(c, http.StatusBadRequest, "INVALID_ID", "invalid expense id")
+		return
+	}
+	var req UpdateExpenseRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		middleware.RespondError(c, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
+		return
+	}
+	userID := middleware.GetUserID(c)
+	expense, err := h.s.UpdateExpense(c.Request.Context(), userID, expID, req)
+	if err != nil {
+		middleware.RespondError(c, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, expense)
 }
 
 func (h *Handler) deleteExpense(c *gin.Context) {

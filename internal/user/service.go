@@ -13,10 +13,10 @@ import (
 
 // OnboardingRequest holds the data needed to complete user onboarding.
 type OnboardingRequest struct {
-	FullName   string     `json:"full_name" binding:"required"`
-	Country    string     `json:"country" binding:"required"`
-	BirthDate  *time.Time `json:"birth_date"`
-	Occupation *string    `json:"occupation"`
+	FullName   string  `json:"full_name" binding:"required"`
+	Country    string  `json:"country" binding:"required"`
+	BirthDate  *string `json:"birth_date"`
+	Occupation *string `json:"occupation"`
 }
 
 // Service provides user-related business logic.
@@ -64,7 +64,10 @@ func (s *Service) CompleteOnboarding(ctx context.Context, userID uuid.UUID, req 
 		Country:  req.Country,
 	}
 	if req.BirthDate != nil {
-		params.BirthDate = pgtype.Date{Time: *req.BirthDate, Valid: true}
+		t, err := time.Parse("2006-01-02", *req.BirthDate)
+		if err == nil {
+			params.BirthDate = pgtype.Date{Time: t, Valid: true}
+		}
 	}
 	if req.Occupation != nil {
 		params.Occupation = pgtype.Text{String: *req.Occupation, Valid: true}

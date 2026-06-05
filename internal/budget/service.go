@@ -68,6 +68,15 @@ type CreateExpenseRequest struct {
 	Subcategory *string  `json:"subcategory"`
 }
 
+// UpdateExpenseRequest is the payload for updating an expense.
+type UpdateExpenseRequest struct {
+	CategoryID  string   `json:"category_id" binding:"required"`
+	Amount      float64  `json:"amount" binding:"required"`
+	ExpenseDate string   `json:"expense_date" binding:"required"`
+	Description *string  `json:"description"`
+	Subcategory *string  `json:"subcategory"`
+}
+
 // BudgetResponse is the API response for a budget.
 type BudgetResponse struct {
 	ID            string              `json:"id"`
@@ -322,17 +331,50 @@ func (s *Service) SetAllocations(ctx context.Context, userID uuid.UUID, req Allo
 	return s.GetBudget(ctx, userID)
 }
 
-// ListExpenses returns expenses for the current cycle.
-func (s *Service) ListExpenses(ctx context.Context, userID uuid.UUID) ([]sqlc.ListExpensesByCycleRow, error) {
-	b, err := s.q.GetBudgetByUserID(ctx, pgUUID(userID))
-	if err != nil {
-		return nil, fmt.Errorf("budget not found: %w", err)
+// ListExpenses returns expenses for a date range. If start/end are zero, uses
+// the current budget cycle or calendar month as fallback.
+func (s *Service) ListExpenses(ctx context.Context, userID uuid.UUID, startParam, endParam time.Time) ([]sqlc.ListExpensesByCycleRow, error) {
+	var start, end time.Time
+
+	if !startParam.IsZero() && !endParam.IsZero() {
+		start = startParam
+		end = endParam
+	} else {
+		now := time.Now().UTC()
+		b, err := s.q.GetBudgetByUserID(ctx, pgUUID(userID))
+		if err != nil {
+			start = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+			end = start.AddDate(0, 1, -1)
+		} else {
+			start, end = getCurrentCycle(b.CycleStartDay, now)
+		}
 	}
-	start, end := getCurrentCycle(b.CycleStartDay, time.Now().UTC())
+
 	return s.q.ListExpensesByCycle(ctx, sqlc.ListExpensesByCycleParams{
 		UserID:        pgUUID(userID),
 		ExpenseDate:   pgDate(start),
 		ExpenseDate_2: pgDate(end),
+	})
+}
+
+// UpdateExpense updates an existing expense.
+func (s *Service) UpdateExpense(ctx context.Context, userID uuid.UUID, expenseID uuid.UUID, req UpdateExpenseRequest) (sqlc.Expense, error) {
+	catID, err := uuid.Parse(req.CategoryID)
+	if err != nil {
+		return sqlc.Expense{}, fmt.Errorf("invalid category_id: %w", err)
+	}
+	expDate, err := time.Parse("2006-01-02", req.ExpenseDate)
+	if err != nil {
+		return sqlc.Expense{}, fmt.Errorf("invalid expense_date: %w", err)
+	}
+	return s.q.UpdateExpense(ctx, sqlc.UpdateExpenseParams{
+		ID:          pgUUID(expenseID),
+		UserID:      pgUUID(userID),
+		CategoryID:  pgUUID(catID),
+		Amount:      numericFromFloat(req.Amount),
+		Description: optText(req.Description),
+		Subcategory: optText(req.Subcategory),
+		ExpenseDate: pgDate(expDate),
 	})
 }
 
