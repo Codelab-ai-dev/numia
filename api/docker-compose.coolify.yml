@@ -1,0 +1,48 @@
+# Variante para desplegar en Coolify.
+# Coolify (Traefik) se encarga del reverse proxy y TLS, por eso NO incluye Caddy
+# ni publica puertos al host. Asigna el dominio al servicio `api` desde la UI de Coolify.
+#
+# El docker-compose.yml original se mantiene para el flujo manual (cd api && docker compose up).
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  migrate:
+    image: migrate/migrate
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./internal/database/migrations:/migrations
+    command: ["-path", "/migrations", "-database", "postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=disable", "up"]
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      - DB_URL=postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=disable
+      - JWT_SECRET=${JWT_SECRET}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GIN_MODE=release
+      - PORT=8080
+    # Sin binding al host: Coolify/Traefik enruta por la red interna de Docker.
+    expose:
+      - "8080"
+
+volumes:
+  pgdata:
