@@ -25,6 +25,7 @@ func NewHandler(s *Service) *Handler {
 func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
 	g := rg.Group("/coach")
 	g.POST("/chat", h.chat)
+	g.GET("/insight", h.insight)
 	g.GET("/conversations", h.listConversations)
 	g.GET("/conversations/:id", h.getConversation)
 	g.DELETE("/conversations/:id", h.deleteConversation)
@@ -83,6 +84,16 @@ func (h *Handler) chat(c *gin.Context) {
 	fmt.Fprintf(c.Writer, "data: %s\n\n", doneData)
 	fmt.Fprintf(c.Writer, "data: [DONE]\n\n")
 	flusher.Flush()
+}
+
+func (h *Handler) insight(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	text, err := h.s.GenerateInsight(c.Request.Context(), userID)
+	if err != nil {
+		middleware.RespondError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to generate insight")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"insight": text})
 }
 
 func (h *Handler) listConversations(c *gin.Context) {

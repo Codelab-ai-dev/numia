@@ -24,4 +24,10 @@ class ConversationRepository {
   Future<void> deleteConversation(String id) async {
     await _client.dio.delete('/api/v1/coach/conversations/$id');
   }
+
+  Future<String> getInsight() async {
+    final response = await _client.dio.get('/api/v1/coach/insight');
+    final data = response.data as Map<String, dynamic>;
+    return data['insight'] as String? ?? '';
+  }
 }

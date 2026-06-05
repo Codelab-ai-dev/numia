@@ -247,6 +247,44 @@ func (s *Service) Chat(ctx context.Context, userID uuid.UUID, req ChatRequest, o
 	return conversationID, fullResponse, nil
 }
 
+const insightPrompt = `Eres Numia, coach financiero personal para México.
+Con base en el contexto financiero del usuario, genera UN solo insight breve, accionable y motivador.
+Reglas estrictas:
+- Máximo 160 caracteres, una sola frase.
+- En español mexicano, tono cercano.
+- Concreto y específico (menciona cifras o acciones cuando ayude).
+- Sin markdown, sin comillas, sin emojis, sin saludos. Devuelve solo la frase.`
+
+// GenerateInsight produces a single short, actionable financial insight for the
+// user based on their current financial context. Non-streaming.
+func (s *Service) GenerateInsight(ctx context.Context, userID uuid.UUID) (string, error) {
+	pgID := pgtype.UUID{Bytes: userID, Valid: true}
+
+	financialContext := s.buildFinancialContext(ctx, pgID)
+
+	userMsg := "Genera mi insight financiero de hoy."
+	if financialContext == "" {
+		userMsg = "Aún no tengo datos financieros registrados. Dame un consejo breve para empezar a organizar mis finanzas."
+	}
+
+	groqMsgs := []groqMessage{
+		{Role: "system", Content: insightPrompt},
+	}
+	if financialContext != "" {
+		groqMsgs = append(groqMsgs, groqMessage{Role: "system", Content: financialContext})
+	}
+	groqMsgs = append(groqMsgs, groqMessage{Role: "user", Content: userMsg})
+
+	var response string
+	err := s.groq.StreamChat(ctx, groqMsgs, func(string) {}, func(full string) {
+		response = full
+	})
+	if err != nil {
+		return "", fmt.Errorf("generate insight: %w", err)
+	}
+	return response, nil
+}
+
 // ListConversations returns recent conversations for a user.
 func (s *Service) ListConversations(ctx context.Context, userID uuid.UUID, limit int32) ([]ConversationListItem, error) {
 	pgID := pgtype.UUID{Bytes: userID, Valid: true}

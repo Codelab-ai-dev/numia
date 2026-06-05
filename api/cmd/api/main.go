@@ -20,6 +20,7 @@ import (
 	"numia-api/internal/debt"
 	"numia-api/internal/device"
 	"numia-api/internal/goal"
+	"numia-api/internal/investment"
 	"numia-api/internal/middleware"
 	"numia-api/internal/transaction"
 	"numia-api/internal/user"
@@ -86,6 +87,11 @@ func main() {
 	debtService := debt.NewService(queries)
 	debtHandler := debt.NewHandler(debtService)
 	debtHandler.RegisterRoutes(protected)
+
+	// Investments
+	investmentService := investment.NewService(queries)
+	investmentHandler := investment.NewHandler(investmentService)
+	investmentHandler.RegisterRoutes(protected)
 
 	// Dashboard
 	dashboardService := dashboard.NewService(queries)

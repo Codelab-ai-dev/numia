@@ -122,6 +122,20 @@ type Goal struct {
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 }
 
+type Investment struct {
+	ID             pgtype.UUID        `json:"id"`
+	UserID         pgtype.UUID        `json:"user_id"`
+	Name           string             `json:"name"`
+	Institution    pgtype.Text        `json:"institution"`
+	Type           string             `json:"type"`
+	AmountInvested pgtype.Numeric     `json:"amount_invested"`
+	CurrentValue   pgtype.Numeric     `json:"current_value"`
+	Notes          pgtype.Text        `json:"notes"`
+	IsActive       bool               `json:"is_active"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Session struct {
 	ID           pgtype.UUID        `json:"id"`
 	UserID       pgtype.UUID        `json:"user_id"`

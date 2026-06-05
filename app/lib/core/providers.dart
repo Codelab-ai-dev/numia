@@ -16,6 +16,8 @@ import '../features/dashboard/domain/debt.dart';
 import '../features/dashboard/domain/financial_summary.dart';
 import '../features/goals/data/goal_repository.dart';
 import '../features/goals/domain/goal.dart';
+import '../features/investments/data/investment_repository.dart';
+import '../features/investments/domain/investment.dart';
 import '../features/transactions/data/transaction_repository.dart';
 import '../features/transactions/domain/transaction.dart';
 import '../app/router.dart';
@@ -61,6 +63,10 @@ final conversationRepositoryProvider = Provider<ConversationRepository>(
 
 final budgetRepositoryProvider = Provider<BudgetRepository>(
   (ref) => BudgetRepository(ref.watch(apiClientProvider)),
+);
+
+final investmentRepositoryProvider = Provider<InvestmentRepository>(
+  (ref) => InvestmentRepository(ref.watch(apiClientProvider)),
 );
 
 // ─── Data Providers ───────────────────────────────────────────
@@ -170,6 +176,16 @@ final budgetSummaryProvider = FutureProvider<BudgetSummary?>((ref) async {
   } catch (_) {
     return null;
   }
+});
+
+final investmentsProvider = FutureProvider<List<Investment>>((ref) {
+  ref.watch(authStateProvider);
+  return ref.watch(investmentRepositoryProvider).getInvestments(activeOnly: true);
+});
+
+final coachInsightProvider = FutureProvider<String>((ref) {
+  ref.watch(authStateProvider);
+  return ref.watch(conversationRepositoryProvider).getInsight();
 });
 
 final selectedMonthProvider = StateProvider<DateTime>((ref) => DateTime.now());

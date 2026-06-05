@@ -8,6 +8,10 @@ ThemeData buildNumiaTheme(Brightness brightness) {
   final isDark = brightness == Brightness.dark;
   final ct = isDark ? NColorTheme.dark() : NColorTheme.light();
 
+  // The glass surfaces (ct.surface*) are translucent by design, which makes
+  // dialogs blend into the background. Dialogs need an opaque surface.
+  final dialogSurface = isDark ? const Color(0xFF16161E) : Colors.white;
+
   return ThemeData(
     useMaterial3: true,
     brightness: brightness,
@@ -101,6 +105,16 @@ ThemeData buildNumiaTheme(Brightness brightness) {
           fontSize: 15,
           fontWeight: FontWeight.w600,
         ),
+      ),
+    ),
+
+    // DatePicker — opaque dialog surface (glass surfaces are translucent)
+    datePickerTheme: DatePickerThemeData(
+      backgroundColor: dialogSurface,
+      surfaceTintColor: Colors.transparent,
+      elevation: 8,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(NSpacing.rXl),
       ),
     ),
 
