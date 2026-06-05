@@ -17,10 +17,9 @@ class NBottomNav extends StatelessWidget {
   static const _items = [
     (icon: Icons.home_outlined,          activeIcon: Icons.home_rounded,          label: 'Inicio'),
     (icon: Icons.pie_chart_outline_rounded, activeIcon: Icons.pie_chart_rounded,  label: 'Presupuesto'),
-    (icon: Icons.swap_horiz_rounded,     activeIcon: Icons.swap_horiz_rounded,    label: 'Movimientos'),
     (icon: Icons.auto_awesome_outlined,  activeIcon: Icons.auto_awesome,          label: 'IA'),
+    (icon: Icons.swap_horiz_rounded,     activeIcon: Icons.swap_horiz_rounded,    label: 'Movimientos'),
     (icon: Icons.adjust_rounded,         activeIcon: Icons.adjust_rounded,        label: 'Metas'),
-    (icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded,        label: 'Perfil'),
   ];
 
   @override
@@ -49,7 +48,41 @@ class NBottomNav extends StatelessWidget {
               children: List.generate(_items.length, (i) {
                 final item = _items[i];
                 final isActive = i == currentIndex;
-                final isAI = i == 3;
+                final isAI = i == 2;
+
+                if (isAI) {
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => onTap(i),
+                      behavior: HitTestBehavior.opaque,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              gradient: NColors.grad,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: NColors.indigo.withValues(alpha: 0.45),
+                                  blurRadius: 16,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.auto_awesome,
+                              size: 24,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
 
                 return Expanded(
                   child: GestureDetector(
@@ -75,15 +108,8 @@ class NBottomNav extends StatelessWidget {
                         children: [
                           Icon(
                             isActive ? item.activeIcon : item.icon,
-                            size: isAI ? 24 : 22,
-                            color: isActive
-                                ? ct.accent1
-                                : isAI
-                                    ? NColors.indigo
-                                    : ct.textTertiary,
-                            shadows: isAI
-                                ? [Shadow(color: NColors.indigo.withValues(alpha: 0.5), blurRadius: 8)]
-                                : null,
+                            size: 22,
+                            color: isActive ? ct.accent1 : ct.textTertiary,
                           ),
                           if (isActive) ...[
                             const SizedBox(height: 3),

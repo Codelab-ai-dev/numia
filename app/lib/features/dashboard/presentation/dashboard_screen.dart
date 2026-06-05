@@ -51,21 +51,25 @@ class DashboardScreen extends ConsumerWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         NGradientText('numia', style: NTypography.logo),
-                        Container(
-                          width: 38,
-                          height: 38,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: NColors.grad,
-                            boxShadow: [NColors.glowIndigo],
-                          ),
-                          child: Center(
-                            child: Text(
-                              profile != null ? _initials(profile.fullName) : '',
-                              style: NTypography.caption.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
+                        GestureDetector(
+                          onTap: () => context.go('/profile'),
+                          behavior: HitTestBehavior.opaque,
+                          child: Container(
+                            width: 38,
+                            height: 38,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: NColors.grad,
+                              boxShadow: [NColors.glowIndigo],
+                            ),
+                            child: Center(
+                              child: Text(
+                                profile != null ? _initials(profile.fullName) : '',
+                                style: NTypography.caption.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                ),
                               ),
                             ),
                           ),
