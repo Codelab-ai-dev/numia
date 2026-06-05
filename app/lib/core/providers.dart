@@ -18,6 +18,7 @@ import '../features/goals/data/goal_repository.dart';
 import '../features/goals/domain/goal.dart';
 import '../features/investments/data/investment_repository.dart';
 import '../features/investments/domain/investment.dart';
+import '../features/debts/data/debt_repository.dart';
 import '../features/transactions/data/transaction_repository.dart';
 import '../features/transactions/domain/transaction.dart';
 import '../app/router.dart';
@@ -67,6 +68,10 @@ final budgetRepositoryProvider = Provider<BudgetRepository>(
 
 final investmentRepositoryProvider = Provider<InvestmentRepository>(
   (ref) => InvestmentRepository(ref.watch(apiClientProvider)),
+);
+
+final debtRepositoryProvider = Provider<DebtRepository>(
+  (ref) => DebtRepository(ref.watch(apiClientProvider)),
 );
 
 // ─── Data Providers ───────────────────────────────────────────
@@ -146,7 +151,7 @@ final accountsProvider = FutureProvider<List<Account>>((ref) {
 
 final debtsProvider = FutureProvider<List<Debt>>((ref) {
   ref.watch(authStateProvider);
-  return ref.watch(dashboardRepositoryProvider).getDebts();
+  return ref.watch(debtRepositoryProvider).getDebts();
 });
 
 final transactionsProvider = FutureProvider<List<Transaction>>((ref) {
