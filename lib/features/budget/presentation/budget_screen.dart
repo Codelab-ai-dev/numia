@@ -9,9 +9,27 @@ import '../../../shared/constants/n_typography.dart';
 import '../../../shared/widgets/n_glass_card.dart';
 import '../../../shared/widgets/n_gradient_bg.dart';
 import '../domain/budget_summary.dart';
+import '../domain/expense.dart';
 import 'budget_setup_screen.dart';
 import 'add_expense_sheet.dart';
 import 'category_detail_screen.dart';
+
+void _refreshAll(WidgetRef ref) {
+  ref.invalidate(budgetSummaryProvider);
+  ref.invalidate(expensesProvider);
+}
+
+void _openExpenseSheet(BuildContext context, WidgetRef ref, {Expense? expense}) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => AddExpenseSheet(
+      expense: expense,
+      onSaved: () => _refreshAll(ref),
+    ),
+  );
+}
 
 class BudgetScreen extends ConsumerWidget {
   const BudgetScreen({super.key});
@@ -26,107 +44,288 @@ class BudgetScreen extends ConsumerWidget {
       body: NGradientBg(
         child: summaryAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => _EmptyState(ct: ct),
+          error: (e, _) => const _NoBudgetState(),
           data: (summary) {
             if (summary == null) {
-              return _EmptyState(ct: ct);
+              return const _NoBudgetState();
             }
-            return _ActiveState(summary: summary, ct: ct, ref: ref);
+            return _ActiveState(summary: summary);
           },
         ),
       ),
-      floatingActionButton: summaryAsync.maybeWhen(
-        data: (summary) {
-          if (summary == null) return null;
-          return FloatingActionButton(
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (_) => AddExpenseSheet(
-                  onSaved: () => ref.invalidate(budgetSummaryProvider),
-                ),
-              );
-            },
-            backgroundColor: ct.accent1,
-            child: const Icon(Icons.add, color: Colors.white),
-          );
-        },
-        orElse: () => null,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _openExpenseSheet(context, ref),
+        backgroundColor: ct.accent1,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
 }
 
-// ─── Empty State ─────────────────────────────────────────────────────────────
+// ─── Month Selector ─────────────────────────────────────────────────────────
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.ct});
+class _MonthSelector extends ConsumerWidget {
+  const _MonthSelector();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ct = NColorTheme.of(context);
+    final month = ref.watch(selectedMonthProvider);
+    final label = DateFormat('MMMM yyyy', 'es').format(month);
+    final now = DateTime.now();
+    final isCurrentMonth = month.year == now.year && month.month == now.month;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        IconButton(
+          icon: Icon(Icons.chevron_left_rounded, color: ct.textSecondary),
+          onPressed: () {
+            ref.read(selectedMonthProvider.notifier).state =
+                DateTime(month.year, month.month - 1);
+          },
+          visualDensity: VisualDensity.compact,
+        ),
+        Text(
+          label[0].toUpperCase() + label.substring(1),
+          style: NTypography.title.copyWith(color: ct.textPrimary),
+        ),
+        IconButton(
+          icon: Icon(Icons.chevron_right_rounded,
+              color: isCurrentMonth ? ct.textDisabled : ct.textSecondary),
+          onPressed: isCurrentMonth
+              ? null
+              : () {
+                  ref.read(selectedMonthProvider.notifier).state =
+                      DateTime(month.year, month.month + 1);
+                },
+          visualDensity: VisualDensity.compact,
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Expenses List (shared) ─────────────────────────────────────────────────
+
+List<Widget> _buildExpensesSliver(
+    AsyncValue<List<Expense>> expensesAsync, NColorTheme ct, WidgetRef ref, BuildContext context) {
+  return [
+    SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+            NSpacing.pageH, NSpacing.sp6, NSpacing.pageH, NSpacing.sp2),
+        child: Column(
+          children: [
+            const _MonthSelector(),
+            const SizedBox(height: NSpacing.sp3),
+          ],
+        ),
+      ),
+    ),
+    expensesAsync.when(
+      loading: () => const SliverToBoxAdapter(
+        child: Center(
+            child: Padding(
+          padding: EdgeInsets.all(NSpacing.sp8),
+          child: CircularProgressIndicator(),
+        )),
+      ),
+      error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+      data: (expenses) {
+        if (expenses.isEmpty) {
+          return SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: NSpacing.pageH, vertical: NSpacing.sp6),
+              child: Column(
+                children: [
+                  Icon(Icons.receipt_long_rounded,
+                      size: 40, color: ct.textDisabled),
+                  const SizedBox(height: NSpacing.sp3),
+                  Text(
+                    'Sin gastos en este mes',
+                    style:
+                        NTypography.caption.copyWith(color: ct.textSecondary),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        return SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: NSpacing.pageH),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (ctx, index) {
+                if (index >= expenses.length) return null;
+                final expense = expenses[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: NSpacing.sp3),
+                  child: _ExpenseTile(
+                    expense: expense,
+                    ct: ct,
+                    onTap: () => _openExpenseSheet(context, ref, expense: expense),
+                  ),
+                );
+              },
+              childCount: expenses.length,
+            ),
+          ),
+        );
+      },
+    ),
+    const SliverToBoxAdapter(child: SizedBox(height: NSpacing.sp16)),
+  ];
+}
+
+// ─── No Budget State ────────────────────────────────────────────────────────
+
+class _NoBudgetState extends ConsumerWidget {
+  const _NoBudgetState();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ct = NColorTheme.of(context);
+    final expensesAsync = ref.watch(expensesProvider);
+
+    return SafeArea(
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: NSpacing.pageH),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: NSpacing.sp5),
+                  Text(
+                    'Presupuesto',
+                    style: NTypography.h2.copyWith(color: ct.textPrimary),
+                  ),
+                  const SizedBox(height: NSpacing.sp5),
+                  // Setup banner
+                  NGlassCard(
+                    padding: const EdgeInsets.all(NSpacing.sp5),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: ct.accent1.withValues(alpha: 0.12),
+                          ),
+                          child: Icon(Icons.account_balance_wallet_rounded,
+                              size: 28, color: ct.accent1),
+                        ),
+                        const SizedBox(height: NSpacing.sp4),
+                        Text(
+                          'Configura tu presupuesto',
+                          style: NTypography.title
+                              .copyWith(color: ct.textPrimary),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: NSpacing.sp2),
+                        Text(
+                          'Establece un presupuesto mensual y controla tus gastos por categoria.',
+                          style: NTypography.caption
+                              .copyWith(color: ct.textSecondary),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: NSpacing.sp4),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 44,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: NColors.grad,
+                              borderRadius:
+                                  BorderRadius.circular(NSpacing.rFull),
+                              boxShadow: const [NColors.glowIndigo],
+                            ),
+                            child: TextButton(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const BudgetSetupScreen(),
+                                  ),
+                                );
+                              },
+                              style: TextButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(NSpacing.rFull),
+                                ),
+                              ),
+                              child: Text(
+                                'Comenzar',
+                                style: NTypography.button
+                                    .copyWith(color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          ..._buildExpensesSliver(expensesAsync, ct, ref, context),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Expense Tile ────────────────────────────────────────────────────────────
+
+class _ExpenseTile extends StatelessWidget {
+  const _ExpenseTile({required this.expense, required this.ct, this.onTap});
+
+  final Expense expense;
   final NColorTheme ct;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: NSpacing.pageH),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: ct.accent1.withValues(alpha: 0.12),
-              ),
-              child: Icon(Icons.account_balance_wallet_rounded,
-                  size: 40, color: ct.accent1),
-            ),
-            const SizedBox(height: NSpacing.sp6),
-            Text(
-              'Configura tu presupuesto',
-              style: NTypography.h2.copyWith(color: ct.textPrimary),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: NSpacing.sp3),
-            Text(
-              'Establece un presupuesto mensual y controla\ntus gastos por categoría.',
-              style: NTypography.body.copyWith(color: ct.textSecondary),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: NSpacing.sp8),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: NColors.grad,
-                  borderRadius: BorderRadius.circular(NSpacing.rFull),
-                  boxShadow: const [NColors.glowIndigo],
+    final fmt = NumberFormat('#,##0.00', 'es_MX');
+    final dateFmt = DateFormat('d MMM', 'es');
+
+    return NGlassCard(
+      padding: const EdgeInsets.all(NSpacing.sp4),
+      onTap: onTap,
+      child: Row(
+        children: [
+          Text(expense.categoryEmoji ?? '',
+              style: const TextStyle(fontSize: 20)),
+          const SizedBox(width: NSpacing.sp3),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  expense.description ?? expense.categoryName ?? 'Gasto',
+                  style: NTypography.title.copyWith(color: ct.textPrimary),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const BudgetSetupScreen(),
-                      ),
-                    );
-                  },
-                  style: TextButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(NSpacing.rFull),
-                    ),
-                  ),
-                  child: Text(
-                    'Comenzar',
-                    style: NTypography.button.copyWith(color: Colors.white),
-                  ),
+                Text(
+                  '${expense.categoryName ?? ''} · ${dateFmt.format(expense.expenseDate)}',
+                  style: NTypography.caption.copyWith(color: ct.textTertiary),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+          Text(
+            '-\$${fmt.format(expense.amount)}',
+            style: NTypography.title.copyWith(color: NColors.error),
+          ),
+        ],
       ),
     );
   }
@@ -134,19 +333,15 @@ class _EmptyState extends StatelessWidget {
 
 // ─── Active State ─────────────────────────────────────────────────────────────
 
-class _ActiveState extends StatelessWidget {
-  const _ActiveState({
-    required this.summary,
-    required this.ct,
-    required this.ref,
-  });
+class _ActiveState extends ConsumerWidget {
+  const _ActiveState({required this.summary});
 
   final BudgetSummary summary;
-  final NColorTheme ct;
-  final WidgetRef ref;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ct = NColorTheme.of(context);
+    final expensesAsync = ref.watch(expensesProvider);
     final sortedCategories = [...summary.categories]
       ..sort((a, b) => b.percentage.compareTo(a.percentage));
 
@@ -162,7 +357,8 @@ class _ActiveState extends StatelessWidget {
         SliverToBoxAdapter(
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: NSpacing.pageH),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: NSpacing.pageH),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -173,7 +369,8 @@ class _ActiveState extends StatelessWidget {
                     children: [
                       Text(
                         'Presupuesto',
-                        style: NTypography.h2.copyWith(color: ct.textPrimary),
+                        style:
+                            NTypography.h2.copyWith(color: ct.textPrimary),
                       ),
                       IconButton(
                         icon: Icon(Icons.settings_rounded,
@@ -186,9 +383,7 @@ class _ActiveState extends StatelessWidget {
                                   const BudgetSetupScreen(isEdit: true),
                             ),
                           )
-                              .then((_) {
-                            ref.invalidate(budgetSummaryProvider);
-                          });
+                              .then((_) => _refreshAll(ref));
                         },
                       ),
                     ],
@@ -202,8 +397,8 @@ class _ActiveState extends StatelessWidget {
                       const SizedBox(width: NSpacing.sp2),
                       Text(
                         cycleLabel,
-                        style:
-                            NTypography.caption.copyWith(color: ct.textSecondary),
+                        style: NTypography.caption
+                            .copyWith(color: ct.textSecondary),
                       ),
                       const SizedBox(width: NSpacing.sp3),
                       Container(
@@ -215,7 +410,7 @@ class _ActiveState extends StatelessWidget {
                               BorderRadius.circular(NSpacing.rFull),
                         ),
                         child: Text(
-                          '$remaining días restantes',
+                          '$remaining dias restantes',
                           style: NTypography.overline
                               .copyWith(color: ct.accent1),
                         ),
@@ -271,7 +466,7 @@ class _ActiveState extends StatelessWidget {
             ),
           ),
         ),
-        const SliverToBoxAdapter(child: SizedBox(height: NSpacing.sp16)),
+        ..._buildExpensesSliver(expensesAsync, ct, ref, context),
       ],
     );
   }
@@ -327,7 +522,8 @@ class _CircularProgressRing extends StatelessWidget {
             children: [
               Text(
                 '${percentage.toStringAsFixed(0)}%',
-                style: NTypography.numericMd.copyWith(color: ct.textPrimary),
+                style:
+                    NTypography.numericMd.copyWith(color: ct.textPrimary),
               ),
               const SizedBox(height: 2),
               Text(
@@ -336,7 +532,8 @@ class _CircularProgressRing extends StatelessWidget {
               ),
               Text(
                 'de \$${fmt.format(budgeted)}',
-                style: NTypography.caption.copyWith(color: ct.textSecondary),
+                style:
+                    NTypography.caption.copyWith(color: ct.textSecondary),
               ),
             ],
           ),
@@ -363,7 +560,6 @@ class _RingPainter extends CustomPainter {
     final radius = size.width / 2 - 12;
     const strokeWidth = 14.0;
 
-    // Track
     final trackPaint = Paint()
       ..color = trackColor
       ..style = PaintingStyle.stroke
@@ -372,7 +568,6 @@ class _RingPainter extends CustomPainter {
 
     canvas.drawCircle(center, radius, trackPaint);
 
-    // Progress arc
     final progressPaint = Paint()
       ..color = ringColor
       ..style = PaintingStyle.stroke
@@ -431,7 +626,8 @@ class _CategoryTile extends StatelessWidget {
             ),
             Text(
               '\$${fmt.format(cat.spent)} / \$${fmt.format(cat.budgeted)}',
-              style: NTypography.caption.copyWith(color: ct.textSecondary),
+              style:
+                  NTypography.caption.copyWith(color: ct.textSecondary),
             ),
           ],
         ),

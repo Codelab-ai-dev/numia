@@ -282,7 +282,9 @@ class _GoalMiniCard extends StatelessWidget {
             children: [
               Icon(Icons.flag_rounded, size: 18, color: ct.accent1),
               const SizedBox(width: NSpacing.sp2),
-              Text('META ACTIVA', style: NTypography.overline.copyWith(color: ct.textTertiary)),
+              Flexible(
+                child: Text('META ACTIVA', style: NTypography.overline.copyWith(color: ct.textTertiary), overflow: TextOverflow.ellipsis),
+              ),
             ],
           ),
           const SizedBox(height: NSpacing.sp2),
@@ -327,9 +329,12 @@ class _GoalMiniCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: NSpacing.sp2),
-              Text(
-                '\$${(current / 1000).toInt()}k/\$${(target / 1000).toInt()}k',
-                style: NTypography.caption.copyWith(color: ct.textSecondary),
+              Flexible(
+                child: Text(
+                  '\$${(current / 1000).toInt()}k/\$${(target / 1000).toInt()}k',
+                  style: NTypography.caption.copyWith(color: ct.textSecondary),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),

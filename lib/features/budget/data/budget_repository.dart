@@ -50,12 +50,15 @@ class BudgetRepository {
 
   Future<void> setAllocations(List<Map<String, dynamic>> allocations) async {
     await _client.dio.put('/api/v1/budget/allocations', data: {
-      'allocations': allocations,
+      'items': allocations,
     });
   }
 
-  Future<List<Expense>> getExpenses() async {
-    final response = await _client.dio.get('/api/v1/budget/expenses');
+  Future<List<Expense>> getExpenses({String? start, String? end}) async {
+    final params = <String, dynamic>{};
+    if (start != null) params['start'] = start;
+    if (end != null) params['end'] = end;
+    final response = await _client.dio.get('/api/v1/budget/expenses', queryParameters: params);
     final data = response.data as List;
     return data
         .map((e) => Expense.fromJson(e as Map<String, dynamic>))
@@ -70,6 +73,23 @@ class BudgetRepository {
     String? subcategory,
   }) async {
     await _client.dio.post('/api/v1/budget/expenses', data: {
+      'category_id': categoryId,
+      'amount': amount,
+      'expense_date': expenseDate,
+      if (description != null) 'description': description,
+      if (subcategory != null) 'subcategory': subcategory,
+    });
+  }
+
+  Future<void> updateExpense({
+    required String id,
+    required String categoryId,
+    required double amount,
+    required String expenseDate,
+    String? description,
+    String? subcategory,
+  }) async {
+    await _client.dio.put('/api/v1/budget/expenses/$id', data: {
       'category_id': categoryId,
       'amount': amount,
       'expense_date': expenseDate,

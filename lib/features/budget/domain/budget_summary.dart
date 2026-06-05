@@ -22,7 +22,7 @@ class BudgetSummary extends Equatable {
               ?.map((e) => CategoryBudgetSummary.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      unallocatedSpent: toDouble(json['unallocated_spent']),
+      unallocatedSpent: toDouble(json['unallocated_spent'] ?? 0),
     );
   }
 
@@ -65,8 +65,8 @@ class GlobalBudgetSummary extends Equatable {
 
   factory GlobalBudgetSummary.fromJson(Map<String, dynamic> json) {
     return GlobalBudgetSummary(
-      budgeted: toDouble(json['budgeted']),
-      spent: toDouble(json['spent']),
+      budgeted: toDouble(json['total_budget'] ?? json['budgeted']),
+      spent: toDouble(json['total_spent'] ?? json['spent']),
       percentage: toDouble(json['percentage']),
     );
   }
@@ -95,9 +95,9 @@ class CategoryBudgetSummary extends Equatable {
   factory CategoryBudgetSummary.fromJson(Map<String, dynamic> json) {
     return CategoryBudgetSummary(
       categoryId: json['category_id'] as String,
-      name: json['name'] as String,
-      emoji: json['emoji'] as String,
-      budgeted: toDouble(json['budgeted']),
+      name: (json['category_name'] ?? json['name']) as String,
+      emoji: (json['category_emoji'] ?? json['emoji']) as String,
+      budgeted: toDouble(json['allocated'] ?? json['budgeted']),
       spent: toDouble(json['spent']),
       percentage: toDouble(json['percentage']),
     );

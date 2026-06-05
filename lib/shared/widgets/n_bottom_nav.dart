@@ -27,8 +27,10 @@ class NBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final ct = NColorTheme.of(context);
 
+    final bottomPadding = MediaQuery.of(context).viewPadding.bottom;
+
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+      margin: EdgeInsets.fromLTRB(12, 0, 12, bottomPadding > 0 ? bottomPadding : 8),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(NSpacing.rXl),
         child: BackdropFilter(
@@ -55,7 +57,7 @@ class NBottomNav extends StatelessWidget {
                     behavior: HitTestBehavior.opaque,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
                       decoration: BoxDecoration(
                         color: isActive ? NColors.indigoSoft : Colors.transparent,
                         borderRadius: BorderRadius.circular(NSpacing.rMd),
@@ -73,7 +75,7 @@ class NBottomNav extends StatelessWidget {
                         children: [
                           Icon(
                             isActive ? item.activeIcon : item.icon,
-                            size: isAI ? 26 : 24,
+                            size: isAI ? 24 : 22,
                             color: isActive
                                 ? ct.accent1
                                 : isAI
@@ -83,17 +85,19 @@ class NBottomNav extends StatelessWidget {
                                 ? [Shadow(color: NColors.indigo.withValues(alpha: 0.5), blurRadius: 8)]
                                 : null,
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            item.label,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
-                              fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                              color: isActive
-                                  ? ct.accent1
-                                  : ct.textTertiary,
+                          if (isActive) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              item.label,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600,
+                                color: ct.accent1,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ),

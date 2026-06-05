@@ -8,6 +8,7 @@ import '../features/auth/domain/auth_models.dart';
 import '../features/budget/data/budget_repository.dart';
 import '../features/budget/domain/budget.dart';
 import '../features/budget/domain/budget_summary.dart';
+import '../features/budget/domain/expense.dart';
 import '../features/coach/data/conversation_repository.dart';
 import '../features/dashboard/data/dashboard_repository.dart';
 import '../features/dashboard/domain/account.dart';
@@ -169,4 +170,16 @@ final budgetSummaryProvider = FutureProvider<BudgetSummary?>((ref) async {
   } catch (_) {
     return null;
   }
+});
+
+final selectedMonthProvider = StateProvider<DateTime>((ref) => DateTime.now());
+
+final expensesProvider = FutureProvider<List<Expense>>((ref) {
+  ref.watch(authStateProvider);
+  final month = ref.watch(selectedMonthProvider);
+  final start = DateTime(month.year, month.month, 1);
+  final end = DateTime(month.year, month.month + 1, 0);
+  final fmt = '${start.year}-${start.month.toString().padLeft(2, '0')}-${start.day.toString().padLeft(2, '0')}';
+  final fmtEnd = '${end.year}-${end.month.toString().padLeft(2, '0')}-${end.day.toString().padLeft(2, '0')}';
+  return ref.watch(budgetRepositoryProvider).getExpenses(start: fmt, end: fmtEnd);
 });

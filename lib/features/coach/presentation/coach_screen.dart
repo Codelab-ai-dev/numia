@@ -89,10 +89,11 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
         ),
       );
 
-      final stream = response.data.stream as Stream<List<int>>;
+      final rs = response.data as ResponseBody;
       String buffer = '';
-      await for (final chunk in stream.transform(utf8.decoder)) {
-        buffer += chunk;
+      await for (final chunk in rs.stream) {
+        final decoded = utf8.decode(chunk);
+        buffer += decoded;
         // Process complete SSE events (separated by \n\n)
         while (buffer.contains('\n\n')) {
           final idx = buffer.indexOf('\n\n');
@@ -132,7 +133,8 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
       }
 
       if (mounted) setState(() => _isStreaming = false);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('Coach error: $e\n$st');
       if (!mounted) return;
       setState(() {
         _isStreaming = false;
