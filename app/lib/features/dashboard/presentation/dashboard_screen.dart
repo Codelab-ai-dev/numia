@@ -114,24 +114,26 @@ class DashboardScreen extends ConsumerWidget {
                       Padding(
                         padding: const EdgeInsets.symmetric(
                             horizontal: NSpacing.pageH),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              child: _GoalMiniCard(
-                                goal: summary.activeGoals.isNotEmpty
-                                    ? summary.activeGoals.first
-                                    : null,
+                        child: IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                child: _GoalMiniCard(
+                                  goal: summary.activeGoals.isNotEmpty
+                                      ? summary.activeGoals.first
+                                      : null,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: NSpacing.sp3),
-                            Expanded(
-                              child: _DebtMiniCard(
-                                debts: summary.activeDebts,
-                                totalDebt: summary.totalDebt,
+                              const SizedBox(width: NSpacing.sp3),
+                              Expanded(
+                                child: _DebtMiniCard(
+                                  debts: summary.activeDebts,
+                                  totalDebt: summary.totalDebt,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: NSpacing.sp4),
