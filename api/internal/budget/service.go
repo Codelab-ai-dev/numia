@@ -2,8 +2,10 @@ package budget
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"numia-api/internal/database/sqlc"
@@ -66,6 +68,36 @@ type CreateExpenseRequest struct {
 	ExpenseDate string   `json:"expense_date" binding:"required"`
 	Description *string  `json:"description"`
 	Subcategory *string  `json:"subcategory"`
+}
+
+// ScanReceiptRequest is the payload for scanning a receipt image.
+type ScanReceiptRequest struct {
+	ImageBase64 string `json:"image_base64" binding:"required"`
+}
+
+// ScanResult is the structured data extracted from a receipt image. Every
+// field may be null; the app still opens the prefilled form.
+type ScanResult struct {
+	Amount       *float64 `json:"amount"`
+	ExpenseDate  *string  `json:"expense_date"`
+	Description  *string  `json:"description"`
+	Subcategory  *string  `json:"subcategory"`
+	CategoryID   *string  `json:"category_id"`
+	CategoryName *string  `json:"category_name"`
+}
+
+// visionExtract is the raw JSON shape we ask the vision model to return.
+type visionExtract struct {
+	Amount   *float64 `json:"amount"`
+	Date     *string  `json:"date"`
+	Merchant *string  `json:"merchant"`
+	Category *string  `json:"category"`
+}
+
+// VisionClient extracts structured JSON from an image. Implemented by
+// coach.GroqClient via VisionJSON; declared here to avoid importing coach.
+type VisionClient interface {
+	VisionJSON(ctx context.Context, prompt, imageDataURL string) (string, error)
 }
 
 // UpdateExpenseRequest is the payload for updating an expense.
@@ -175,13 +207,14 @@ func getCurrentCycle(cycleStartDay int16, ref time.Time) (start, end time.Time) 
 
 // Service provides budget-related business logic.
 type Service struct {
-	q   *sqlc.Queries
-	fcm *FCMClient
+	q      *sqlc.Queries
+	fcm    *FCMClient
+	vision VisionClient
 }
 
 // NewService creates a new budget Service.
-func NewService(q *sqlc.Queries, fcm *FCMClient) *Service {
-	return &Service{q: q, fcm: fcm}
+func NewService(q *sqlc.Queries, fcm *FCMClient, vision VisionClient) *Service {
+	return &Service{q: q, fcm: fcm, vision: vision}
 }
 
 // seedPredefinedCategories inserts default categories for a new user if they
@@ -608,4 +641,74 @@ func uuidString(u pgtype.UUID) string {
 	}
 	id := uuid.UUID(u.Bytes)
 	return id.String()
+}
+
+// buildScanPrompt builds the vision prompt that lists the user's category
+// names and asks for a strict JSON object.
+func buildScanPrompt(categoryNames []string) string {
+	cats := strings.Join(categoryNames, ", ")
+	return fmt.Sprintf(`Eres un asistente que extrae datos de tickets, facturas o notas escritas a mano.
+Analiza la imagen y devuelve UNICAMENTE un objeto JSON valido con esta forma exacta:
+{"amount": number|null, "date": "YYYY-MM-DD"|null, "merchant": string|null, "category": string|null}
+
+Reglas:
+- "amount": el total a pagar como numero, sin simbolo de moneda. Si no es legible, null.
+- "date": la fecha del ticket en formato YYYY-MM-DD. Si no hay fecha, null.
+- "merchant": el nombre del comercio o una descripcion breve. Si no se distingue, null.
+- "category": elige EXACTAMENTE una de estas categorias: %s. Si ninguna aplica, usa "Otros".
+- No incluyas texto adicional, explicaciones ni markdown. Solo el objeto JSON.`, cats)
+}
+
+// ScanReceipt sends a base64 image to the vision model, parses the result, and
+// maps the extracted category name to a real category id (fallback "Otros").
+func (s *Service) ScanReceipt(ctx context.Context, userID uuid.UUID, imageBase64 string) (ScanResult, error) {
+	cats, err := s.ListCategories(ctx, userID)
+	if err != nil {
+		return ScanResult{}, fmt.Errorf("list categories: %w", err)
+	}
+
+	names := make([]string, 0, len(cats))
+	byLowerName := make(map[string]sqlc.BudgetCategory, len(cats))
+	var otros *sqlc.BudgetCategory
+	for i := range cats {
+		names = append(names, cats[i].Name)
+		byLowerName[strings.ToLower(cats[i].Name)] = cats[i]
+		if cats[i].Name == "Otros" {
+			otros = &cats[i]
+		}
+	}
+
+	raw, err := s.vision.VisionJSON(ctx, buildScanPrompt(names), "data:image/jpeg;base64,"+imageBase64)
+	if err != nil {
+		return ScanResult{}, fmt.Errorf("vision: %w", err)
+	}
+
+	var ext visionExtract
+	if err := json.Unmarshal([]byte(raw), &ext); err != nil {
+		return ScanResult{}, fmt.Errorf("parse vision json: %w", err)
+	}
+
+	result := ScanResult{
+		Amount:      ext.Amount,
+		ExpenseDate: ext.Date,
+		Description: ext.Merchant,
+	}
+
+	var matched *sqlc.BudgetCategory
+	if ext.Category != nil {
+		if c, ok := byLowerName[strings.ToLower(strings.TrimSpace(*ext.Category))]; ok {
+			matched = &c
+		}
+	}
+	if matched == nil {
+		matched = otros
+	}
+	if matched != nil {
+		id := uuidString(matched.ID)
+		name := matched.Name
+		result.CategoryID = &id
+		result.CategoryName = &name
+	}
+
+	return result, nil
 }

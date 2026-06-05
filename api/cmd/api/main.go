@@ -106,7 +106,7 @@ func main() {
 
 	// Budget
 	fcmClient := budget.NewFCMClient(cfg.FirebaseCredentialsPath)
-	budgetService := budget.NewService(queries, fcmClient)
+	budgetService := budget.NewService(queries, fcmClient, groqClient)
 	budgetHandler := budget.NewHandler(budgetService)
 	budgetHandler.RegisterRoutes(protected)
 
