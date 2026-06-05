@@ -134,3 +134,63 @@ Labels only shown on active tab. Uses `MediaQuery.viewPadding.bottom` for safe a
 - Android device connected via USB
 - Device ID may change between connections (was `25028PC03G`, then `863d00583048313238510d56e01d4c`)
 - Always check with `adb devices` before deploying
+
+---
+
+## RESUME HERE — Scan Receipt Feature (2026-06-05)
+
+**Feature:** "Escanear ticket → Gasto" — photograph a receipt/invoice/note, AI vision (Groq) extracts data, app opens the prefilled & editable "Agregar gasto" sheet for the user to confirm.
+
+- **Spec:** `docs/superpowers/specs/2026-06-05-scan-receipt-design.md` (approved)
+- **Plan:** `docs/superpowers/plans/2026-06-05-scan-receipt.md` (11 tasks, full no-placeholder code — read this to continue)
+- **Execution mode:** Subagent-Driven Development (fresh subagent per task, verify between tasks). Per user: commit to `main`, no separate branch.
+- **Branch:** `main` (only branch). Currently several commits ahead of origin/main, NOT pushed yet (push triggers Coolify redeploy — do only when user asks).
+
+### Progress (as of pause)
+
+| Task | Description | Status | Commit |
+|------|-------------|--------|--------|
+| 1 | Backend: Groq `VisionJSON` client (`api/internal/coach/groq_vision.go`) | DONE+verified | 6211c7f |
+| 2 | Backend: `ScanReceipt` service + types + `VisionClient` iface + main.go wiring | DONE+verified | 79254b9 |
+| 3 | Backend: `POST /budget/expenses/scan` handler + route | DONE+verified | eb1663a |
+| 4 | Frontend: add `image_picker: ^1.1.2` to pubspec | DONE+verified | a0b4270 |
+| 5 | Frontend: Android CAMERA permission + iOS Info.plist usage strings | **IN PROGRESS** (next) | — |
+| 6 | Frontend: `ScanResult` domain model (`scan_result.dart`) | pending | — |
+| 7 | Frontend: `scanReceipt()` in `budget_repository.dart` | pending | — |
+| 8 | Frontend: prefill params in `AddExpenseSheet` | pending | — |
+| 9 | Frontend: `scan_receipt_action.dart` orchestrator | pending | — |
+| 10 | Frontend: "Escanear ticket" FAB on budget screen | pending | — |
+| 11 | Full verification (go build/vet, flutter analyze, manual test) + finishing-a-development-branch | pending | — |
+
+### Task 5 — exact next step (already read both files):
+
+**Android** `app/android/app/src/main/AndroidManifest.xml` — insert a CAMERA permission as the first child of `<manifest>`, before `<application`:
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <application
+```
+
+**iOS** `app/ios/Runner/Info.plist` — add before the closing `</dict>`:
+```xml
+	<key>NSCameraUsageDescription</key>
+	<string>Necesitamos la cámara para escanear tus tickets y registrar gastos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Necesitamos acceso a tus fotos para escanear tickets desde la galería.</string>
+```
+Then commit: `feat: add camera and photo-library permissions for receipt scanning`
+
+### Backend types/signatures already in place (for frontend reference)
+- Endpoint: `POST /api/v1/budget/expenses/scan`, body `{"image_base64":"<base64, no data-url prefix>"}`.
+- 200 response JSON keys: `amount` (num|null), `expense_date` ("YYYY-MM-DD"|null), `description` (str|null), `subcategory` (str|null), `category_id` (uuid str|null), `category_name` (str|null).
+- 422 response: `{"error":"No pudimos leer el ticket"}`.
+
+### Verification convention (NO automated tests)
+- Backend (from `api/`): `go build ./... && go vet ./...`
+- Frontend (from `app/`): `flutter analyze lib/features/budget` (4 pre-existing `prefer_const_constructors` infos in budget_screen.dart are acceptable)
+- Manual: scan a real receipt via camera + gallery; unreadable photo must fall back to empty manual form.
+
+### Flutter helpers/patterns to reuse
+- `lib/core/json_helpers.dart`: `toDouble`, `toDoubleOrNull`.
+- Providers (`lib/core/providers.dart`): `budgetRepositoryProvider`, `budgetSummaryProvider`, `expensesProvider` — invalidate the last two after save.
+- Dio client accessed via repository `_client.dio`. `NColorTheme.of(context)`, `NSpacing`.
