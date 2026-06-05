@@ -1,0 +1,9 @@
+# Sistema operativo
+.DS_Store
+
+# Logs
+*.log
+
+# Nota: cada subproyecto tiene su propio .gitignore
+#   app/.gitignore  -> reglas Flutter/Dart
+#   api/.gitignore  -> reglas Go
