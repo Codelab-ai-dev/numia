@@ -171,6 +171,11 @@ final goalsProvider = FutureProvider<List<Goal>>((ref) {
   return ref.watch(goalRepositoryProvider).getGoals(status: 'active');
 });
 
+final allGoalsProvider = FutureProvider<List<Goal>>((ref) {
+  ref.watch(authStateProvider);
+  return ref.watch(goalRepositoryProvider).getGoals();
+});
+
 final budgetProvider = FutureProvider<Budget?>((ref) {
   ref.watch(authStateProvider);
   return ref.watch(budgetRepositoryProvider).getBudget();
