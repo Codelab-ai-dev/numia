@@ -37,6 +37,7 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
 	// Expenses
 	g.GET("/expenses", h.listExpenses)
 	g.POST("/expenses", h.createExpense)
+	g.POST("/expenses/scan", h.scanReceipt)
 	g.PUT("/expenses/:id", h.updateExpense)
 	g.DELETE("/expenses/:id", h.deleteExpense)
 
@@ -159,6 +160,21 @@ func (h *Handler) createExpense(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, expense)
+}
+
+func (h *Handler) scanReceipt(c *gin.Context) {
+	var req ScanReceiptRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		middleware.RespondError(c, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
+		return
+	}
+	userID := middleware.GetUserID(c)
+	result, err := h.s.ScanReceipt(c.Request.Context(), userID, req.ImageBase64)
+	if err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "No pudimos leer el ticket"})
+		return
+	}
+	c.JSON(http.StatusOK, result)
 }
 
 func (h *Handler) updateExpense(c *gin.Context) {
