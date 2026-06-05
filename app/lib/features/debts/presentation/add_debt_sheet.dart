@@ -100,8 +100,11 @@ class _AddDebtSheetState extends ConsumerState<AddDebtSheet> {
       final repo = ref.read(debtRepositoryProvider);
       if (_isEditing) {
         await repo.updateDebt(widget.debt!.id, {
+          'type': _selectedType,
           'name': name,
+          'institution': institution,
           'total_amount': total,
+          'original_amount': original,
           'monthly_payment': payment,
           'interest_rate': interest,
           'notes': notes,

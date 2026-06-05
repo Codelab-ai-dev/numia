@@ -156,12 +156,15 @@ func (q *Queries) ListDebts(ctx context.Context, arg ListDebtsParams) ([]Debt, e
 
 const updateDebt = `-- name: UpdateDebt :one
 UPDATE debts
-SET name = COALESCE($3, name),
-    total_amount = COALESCE($4, total_amount),
-    monthly_payment = COALESCE($5, monthly_payment),
-    interest_rate = COALESCE($6, interest_rate),
-    is_active = COALESCE($7, is_active),
-    notes = COALESCE($8, notes)
+SET type = COALESCE($3, type),
+    name = COALESCE($4, name),
+    institution = COALESCE($5, institution),
+    total_amount = COALESCE($6, total_amount),
+    original_amount = COALESCE($7, original_amount),
+    monthly_payment = COALESCE($8, monthly_payment),
+    interest_rate = COALESCE($9, interest_rate),
+    is_active = COALESCE($10, is_active),
+    notes = COALESCE($11, notes)
 WHERE id = $1 AND user_id = $2
 RETURNING id, user_id, type, name, institution, total_amount, original_amount, monthly_payment, interest_rate, is_active, notes, created_at, updated_at
 `
@@ -169,8 +172,11 @@ RETURNING id, user_id, type, name, institution, total_amount, original_amount, m
 type UpdateDebtParams struct {
 	ID             pgtype.UUID    `json:"id"`
 	UserID         pgtype.UUID    `json:"user_id"`
+	Type           pgtype.Text    `json:"type"`
 	Name           pgtype.Text    `json:"name"`
+	Institution    pgtype.Text    `json:"institution"`
 	TotalAmount    pgtype.Numeric `json:"total_amount"`
+	OriginalAmount pgtype.Numeric `json:"original_amount"`
 	MonthlyPayment pgtype.Numeric `json:"monthly_payment"`
 	InterestRate   pgtype.Numeric `json:"interest_rate"`
 	IsActive       pgtype.Bool    `json:"is_active"`
@@ -181,8 +187,11 @@ func (q *Queries) UpdateDebt(ctx context.Context, arg UpdateDebtParams) (Debt, e
 	row := q.db.QueryRow(ctx, updateDebt,
 		arg.ID,
 		arg.UserID,
+		arg.Type,
 		arg.Name,
+		arg.Institution,
 		arg.TotalAmount,
+		arg.OriginalAmount,
 		arg.MonthlyPayment,
 		arg.InterestRate,
 		arg.IsActive,

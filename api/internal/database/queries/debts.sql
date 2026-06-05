@@ -18,8 +18,11 @@ RETURNING *;
 
 -- name: UpdateDebt :one
 UPDATE debts
-SET name = COALESCE(sqlc.narg('name'), name),
+SET type = COALESCE(sqlc.narg('type'), type),
+    name = COALESCE(sqlc.narg('name'), name),
+    institution = COALESCE(sqlc.narg('institution'), institution),
     total_amount = COALESCE(sqlc.narg('total_amount'), total_amount),
+    original_amount = COALESCE(sqlc.narg('original_amount'), original_amount),
     monthly_payment = COALESCE(sqlc.narg('monthly_payment'), monthly_payment),
     interest_rate = COALESCE(sqlc.narg('interest_rate'), interest_rate),
     is_active = COALESCE(sqlc.narg('is_active'), is_active),

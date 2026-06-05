@@ -24,8 +24,11 @@ type CreateRequest struct {
 
 // UpdateRequest is the payload for updating a debt.
 type UpdateRequest struct {
+	Type           *string  `json:"type"`
 	Name           *string  `json:"name"`
+	Institution    *string  `json:"institution"`
 	TotalAmount    *float64 `json:"total_amount"`
+	OriginalAmount *float64 `json:"original_amount"`
 	MonthlyPayment *float64 `json:"monthly_payment"`
 	InterestRate   *float64 `json:"interest_rate"`
 	IsActive       *bool    `json:"is_active"`
@@ -98,8 +101,11 @@ func (s *Service) Update(ctx context.Context, userID uuid.UUID, debtID uuid.UUID
 	params := sqlc.UpdateDebtParams{
 		ID:             pgtype.UUID{Bytes: debtID, Valid: true},
 		UserID:         pgtype.UUID{Bytes: userID, Valid: true},
+		Type:           optText(req.Type),
 		Name:           optText(req.Name),
+		Institution:    optText(req.Institution),
 		TotalAmount:    optNumeric(req.TotalAmount),
+		OriginalAmount: optNumeric(req.OriginalAmount),
 		MonthlyPayment: optNumeric(req.MonthlyPayment),
 		InterestRate:   optNumeric(req.InterestRate),
 		Notes:          optText(req.Notes),
