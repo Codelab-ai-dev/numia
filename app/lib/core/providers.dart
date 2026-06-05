@@ -27,6 +27,7 @@ import '../features/auth/presentation/register_screen.dart';
 import '../features/budget/presentation/budget_screen.dart';
 import '../features/coach/presentation/coach_screen.dart';
 import '../features/dashboard/presentation/dashboard_screen.dart';
+import '../features/debts/presentation/debts_screen.dart';
 import '../features/goals/presentation/goals_screen.dart';
 import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
@@ -130,6 +131,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/', builder: (_, __) => const DashboardScreen()),
           GoRoute(path: '/budget', builder: (_, __) => const BudgetScreen()),
           GoRoute(path: '/transactions', builder: (_, __) => const TransactionsScreen()),
+          GoRoute(path: '/debts', builder: (_, __) => const DebtsScreen()),
           GoRoute(path: '/coach', builder: (_, __) => const CoachScreen()),
           GoRoute(path: '/goals', builder: (_, __) => const GoalsScreen()),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),

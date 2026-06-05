@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/providers.dart';
 import '../../../shared/constants/n_colors.dart';
 import '../../../shared/constants/n_spacing.dart';
@@ -331,6 +332,7 @@ class _DebtMiniCard extends StatelessWidget {
 
     return NGlassCard(
       padding: const EdgeInsets.all(NSpacing.sp5),
+      onTap: () => context.push('/debts'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
