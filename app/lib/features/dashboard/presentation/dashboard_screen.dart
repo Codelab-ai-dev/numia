@@ -111,39 +111,34 @@ class DashboardScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: NSpacing.sp4),
 
-                      // ── Meta activa + Deuda row ──
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: NSpacing.pageH),
-                        child: IntrinsicHeight(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Expanded(
-                                child: _GoalMiniCard(
-                                  goal: summary.activeGoals.isNotEmpty
-                                      ? summary.activeGoals.first
-                                      : null,
-                                ),
-                              ),
-                              const SizedBox(width: NSpacing.sp3),
-                              Expanded(
-                                child: _DebtMiniCard(
-                                  debts: summary.activeDebts,
-                                  totalDebt: summary.totalDebt,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: NSpacing.sp4),
-
                       // ── Insight IA ──
                       Padding(
                         padding: const EdgeInsets.symmetric(
                             horizontal: NSpacing.pageH),
                         child: _InsightCard(insight: insightAsync),
+                      ),
+                      const SizedBox(height: NSpacing.sp4),
+
+                      // ── Meta activa (full-width) ──
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: NSpacing.pageH),
+                        child: _GoalMiniCard(
+                          goal: summary.activeGoals.isNotEmpty
+                              ? summary.activeGoals.first
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(height: NSpacing.sp3),
+
+                      // ── Deuda (full-width) ──
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: NSpacing.pageH),
+                        child: _DebtMiniCard(
+                          debts: summary.activeDebts,
+                          totalDebt: summary.totalDebt,
+                        ),
                       ),
                       const SizedBox(height: NSpacing.sp10),
                     ]),
@@ -229,12 +224,19 @@ class _GoalMiniCard extends StatelessWidget {
             children: [
               Icon(Icons.flag_rounded, size: 18, color: ct.accent1),
               const SizedBox(width: NSpacing.sp2),
-              Flexible(
-                child: Text('META ACTIVA', style: NTypography.overline.copyWith(color: ct.textTertiary), overflow: TextOverflow.ellipsis),
-              ),
+              Text('META ACTIVA', style: NTypography.overline.copyWith(color: ct.textTertiary)),
+              const Spacer(),
+              if (goal != null)
+                Text(
+                  '${(goal!.progress * 100).toInt()}%',
+                  style: NTypography.title.copyWith(
+                    color: ct.accent1,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
             ],
           ),
-          const SizedBox(height: NSpacing.sp2),
+          const SizedBox(height: NSpacing.sp3),
           if (goal == null)
             Text('Sin metas activas',
                 style: NTypography.body.copyWith(color: ct.textSecondary))
@@ -258,10 +260,21 @@ class _GoalProgress extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(goal.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: NTypography.title.copyWith(color: ct.textPrimary)),
+        Row(
+          children: [
+            Expanded(
+              child: Text(goal.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: NTypography.title.copyWith(color: ct.textPrimary)),
+            ),
+            const SizedBox(width: NSpacing.sp2),
+            Text(
+              '\$${(goal.currentAmount / 1000).toInt()}k/\$${(goal.targetAmount / 1000).toInt()}k',
+              style: NTypography.caption.copyWith(color: ct.textSecondary),
+            ),
+          ],
+        ),
         const SizedBox(height: NSpacing.sp3),
 
         // Progress bar indigo -> emerald
@@ -289,27 +302,6 @@ class _GoalProgress extends StatelessWidget {
               ],
             ),
           ),
-        ),
-
-        const SizedBox(height: NSpacing.sp2),
-        Row(
-          children: [
-            Text(
-              '${(pct * 100).toInt()}%',
-              style: NTypography.caption.copyWith(
-                color: ct.accent1,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(width: NSpacing.sp2),
-            Flexible(
-              child: Text(
-                '\$${(goal.currentAmount / 1000).toInt()}k/\$${(goal.targetAmount / 1000).toInt()}k',
-                style: NTypography.caption.copyWith(color: ct.textSecondary),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
         ),
       ],
     );
@@ -341,34 +333,42 @@ class _DebtMiniCard extends StatelessWidget {
               Icon(Icons.credit_card_rounded, size: 18, color: ct.accent3),
               const SizedBox(width: NSpacing.sp2),
               Text('DEUDA', style: NTypography.overline.copyWith(color: ct.textTertiary)),
+              const Spacer(),
+              if (debts.isNotEmpty)
+                Text(
+                  CurrencyFormatter.formatMXN(totalDebt),
+                  style: NTypography.numericMd.copyWith(color: ct.textPrimary),
+                ),
             ],
           ),
-          const SizedBox(height: NSpacing.sp2),
-          if (debts.isEmpty)
-            Text('Sin deudas activas',
-                style: NTypography.body.copyWith(color: ct.textSecondary))
-          else ...[
-            Text(
-              CurrencyFormatter.formatMXN(totalDebt),
-              style: NTypography.numericMd.copyWith(color: ct.textPrimary),
-            ),
+          if (debts.isEmpty) ...[
             const SizedBox(height: NSpacing.sp3),
-            Text(
-              debts.length == 1 ? '1 deuda activa' : '${debts.length} deudas activas',
-              style: NTypography.caption.copyWith(color: ct.textSecondary),
-            ),
-            if (monthlyPayment > 0) ...[
-              const SizedBox(height: NSpacing.sp1),
-              Text(
-                'Pago mensual ${CurrencyFormatter.formatMXN(monthlyPayment)}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: NTypography.caption.copyWith(
-                  color: NColors.error,
-                  fontWeight: FontWeight.w600,
+            Text('Sin deudas activas',
+                style: NTypography.body.copyWith(color: ct.textSecondary)),
+          ] else ...[
+            const SizedBox(height: NSpacing.sp2),
+            Row(
+              children: [
+                Text(
+                  debts.length == 1 ? '1 deuda activa' : '${debts.length} deudas activas',
+                  style: NTypography.caption.copyWith(color: ct.textSecondary),
                 ),
-              ),
-            ],
+                if (monthlyPayment > 0) ...[
+                  const Spacer(),
+                  Flexible(
+                    child: Text(
+                      'Pago mensual ${CurrencyFormatter.formatMXN(monthlyPayment)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: NTypography.caption.copyWith(
+                        color: NColors.error,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ],
         ],
       ),
