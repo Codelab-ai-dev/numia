@@ -38,6 +38,9 @@ dependencies:
   # File picker (PDF estados de cuenta)
   file_picker: ^8.0.3
 
+  # Image picker (escanear tickets - cámara + galería)
+  image_picker: ^1.1.2
+
   # Utils
   equatable: ^2.0.5
   freezed_annotation: ^2.4.1
