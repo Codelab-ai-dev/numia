@@ -1,6 +1,7 @@
 package budget
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -171,7 +172,11 @@ func (h *Handler) scanReceipt(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 	result, err := h.s.ScanReceipt(c.Request.Context(), userID, req.ImageBase64)
 	if err != nil {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "No pudimos leer el ticket"})
+		if errors.Is(err, ErrUnreadableReceipt) {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "No pudimos leer el ticket"})
+			return
+		}
+		middleware.RespondError(c, http.StatusInternalServerError, "SCAN_ERROR", "no se pudo procesar el ticket")
 		return
 	}
 	c.JSON(http.StatusOK, result)

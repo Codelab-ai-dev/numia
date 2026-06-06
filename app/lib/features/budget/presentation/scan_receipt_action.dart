@@ -18,6 +18,7 @@ Future<void> scanReceiptAndAddExpense(
     BuildContext context, WidgetRef ref) async {
   final source = await _pickSource(context);
   if (source == null) return;
+  if (!context.mounted) return;
 
   final picker = ImagePicker();
   XFile? file;
@@ -29,7 +30,12 @@ Future<void> scanReceiptAndAddExpense(
     );
   } catch (_) {
     if (!context.mounted) return;
-    _snack(context, 'Activa el permiso de cámara para escanear');
+    _snack(
+      context,
+      source == ImageSource.camera
+          ? 'Activa el permiso de cámara para escanear'
+          : 'Activa el permiso de fotos para escanear',
+    );
     return;
   }
   if (file == null) return; // user cancelled

@@ -3,6 +3,7 @@ package budget
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -13,6 +14,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+// ErrUnreadableReceipt indicates the vision model could not produce valid data
+// from the image (the request itself succeeded). Maps to HTTP 422.
+var ErrUnreadableReceipt = errors.New("unreadable receipt")
+
+// maxScanImageBytes caps the base64 image payload accepted by ScanReceipt.
+const maxScanImageBytes = 10 * 1024 * 1024
 
 // predefinedCategory holds a default category seed.
 type predefinedCategory struct {
@@ -662,6 +670,10 @@ Reglas:
 // ScanReceipt sends a base64 image to the vision model, parses the result, and
 // maps the extracted category name to a real category id (fallback "Otros").
 func (s *Service) ScanReceipt(ctx context.Context, userID uuid.UUID, imageBase64 string) (ScanResult, error) {
+	if len(imageBase64) > maxScanImageBytes {
+		return ScanResult{}, fmt.Errorf("%w: image too large", ErrUnreadableReceipt)
+	}
+
 	cats, err := s.ListCategories(ctx, userID)
 	if err != nil {
 		return ScanResult{}, fmt.Errorf("list categories: %w", err)
@@ -678,14 +690,17 @@ func (s *Service) ScanReceipt(ctx context.Context, userID uuid.UUID, imageBase64
 		}
 	}
 
-	raw, err := s.vision.VisionJSON(ctx, buildScanPrompt(names), "data:image/jpeg;base64,"+imageBase64)
+	visionCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	raw, err := s.vision.VisionJSON(visionCtx, buildScanPrompt(names), "data:image/jpeg;base64,"+imageBase64)
 	if err != nil {
 		return ScanResult{}, fmt.Errorf("vision: %w", err)
 	}
 
 	var ext visionExtract
 	if err := json.Unmarshal([]byte(raw), &ext); err != nil {
-		return ScanResult{}, fmt.Errorf("parse vision json: %w", err)
+		return ScanResult{}, fmt.Errorf("%w: parse vision json: %v", ErrUnreadableReceipt, err)
 	}
 
 	result := ScanResult{
