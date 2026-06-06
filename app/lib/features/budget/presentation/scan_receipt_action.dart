@@ -67,7 +67,7 @@ Future<void> scanReceiptAndAddExpense(
   }
 
   if (!context.mounted) return;
-  Navigator.of(context).pop(); // dismiss loader
+  Navigator.of(context, rootNavigator: true).pop(); // dismiss loader
   _openExpenseSheet(context, ref, result);
 }
 
