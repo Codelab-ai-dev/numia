@@ -3,6 +3,7 @@ import '../domain/budget.dart';
 import '../domain/budget_category.dart';
 import '../domain/budget_summary.dart';
 import '../domain/expense.dart';
+import '../domain/scan_result.dart';
 
 class BudgetRepository {
   BudgetRepository(this._client);
@@ -100,6 +101,13 @@ class BudgetRepository {
 
   Future<void> deleteExpense(String id) async {
     await _client.dio.delete('/api/v1/budget/expenses/$id');
+  }
+
+  Future<ScanResult> scanReceipt(String imageBase64) async {
+    final response = await _client.dio.post('/api/v1/budget/expenses/scan', data: {
+      'image_base64': imageBase64,
+    });
+    return ScanResult.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<BudgetSummary> getSummary() async {
