@@ -154,13 +154,16 @@ Labels only shown on active tab. Uses `MediaQuery.viewPadding.bottom` for safe a
 | 2 | Backend: `ScanReceipt` service + types + `VisionClient` iface + main.go wiring | DONE+verified | 79254b9 |
 | 3 | Backend: `POST /budget/expenses/scan` handler + route | DONE+verified | eb1663a |
 | 4 | Frontend: add `image_picker: ^1.1.2` to pubspec | DONE+verified | a0b4270 |
-| 5 | Frontend: Android CAMERA permission + iOS Info.plist usage strings | **IN PROGRESS** (next) | — |
-| 6 | Frontend: `ScanResult` domain model (`scan_result.dart`) | pending | — |
-| 7 | Frontend: `scanReceipt()` in `budget_repository.dart` | pending | — |
-| 8 | Frontend: prefill params in `AddExpenseSheet` | pending | — |
-| 9 | Frontend: `scan_receipt_action.dart` orchestrator | pending | — |
-| 10 | Frontend: "Escanear ticket" FAB on budget screen | pending | — |
-| 11 | Full verification (go build/vet, flutter analyze, manual test) + finishing-a-development-branch | pending | — |
+| 5 | Frontend: Android CAMERA permission + iOS Info.plist usage strings | DONE+verified | 03fd0a0 |
+| 6 | Frontend: `ScanResult` domain model (`scan_result.dart`) | DONE+verified | 1e36953 |
+| 7 | Frontend: `scanReceipt()` in `budget_repository.dart` | DONE+verified | 3f43deb |
+| 8 | Frontend: prefill params in `AddExpenseSheet` | DONE+verified | 42c1235 |
+| 9 | Frontend: `scan_receipt_action.dart` orchestrator | DONE+verified | f17d652 |
+| 10 | Frontend: "Escanear ticket" FAB on budget screen | DONE+verified | d3e04cf |
+| 11 | Full verification (go build/vet, flutter analyze) | DONE (auto checks) | — |
+| review | Final code review + hardening fixes (422 vs 500, vision timeout/size cap, mounted guard, gallery copy) | DONE | 3d4d2d5 |
+
+**Status: feature code-complete.** All commits on `main` local, NOT pushed (push triggers Coolify). Remaining: manual device test (camera + gallery + unreadable-photo fallback), then push when ready.
 
 ### Task 5 — exact next step (already read both files):
 
