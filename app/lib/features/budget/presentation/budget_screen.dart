@@ -13,6 +13,7 @@ import '../domain/expense.dart';
 import 'budget_setup_screen.dart';
 import 'add_expense_sheet.dart';
 import 'category_detail_screen.dart';
+import 'scan_receipt_action.dart';
 
 void _refreshAll(WidgetRef ref) {
   ref.invalidate(budgetSummaryProvider);
@@ -53,10 +54,23 @@ class BudgetScreen extends ConsumerWidget {
           },
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _openExpenseSheet(context, ref),
-        backgroundColor: ct.accent1,
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton.small(
+            heroTag: 'scanReceipt',
+            onPressed: () => scanReceiptAndAddExpense(context, ref),
+            backgroundColor: ct.surface2,
+            child: Icon(Icons.document_scanner_rounded, color: ct.accent1),
+          ),
+          const SizedBox(height: NSpacing.sp3),
+          FloatingActionButton(
+            heroTag: 'addExpense',
+            onPressed: () => _openExpenseSheet(context, ref),
+            backgroundColor: ct.accent1,
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
+        ],
       ),
     );
   }
