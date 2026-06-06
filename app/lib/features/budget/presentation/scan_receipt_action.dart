@@ -51,7 +51,7 @@ Future<void> scanReceiptAndAddExpense(
     result = await ref.read(budgetRepositoryProvider).scanReceipt(imageBase64);
   } on DioException catch (e) {
     if (!context.mounted) return;
-    Navigator.of(context).pop(); // dismiss loader
+    Navigator.of(context, rootNavigator: true).pop(); // dismiss loader
     if (e.response?.statusCode == 422) {
       _snack(context, 'No pudimos leer el ticket');
       _openExpenseSheet(context, ref, null);
@@ -61,7 +61,7 @@ Future<void> scanReceiptAndAddExpense(
     return;
   } catch (_) {
     if (!context.mounted) return;
-    Navigator.of(context).pop(); // dismiss loader
+    Navigator.of(context, rootNavigator: true).pop(); // dismiss loader
     _snack(context, 'Sin conexión, intenta de nuevo');
     return;
   }

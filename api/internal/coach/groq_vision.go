@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-const groqVisionModel = "llama-4-scout-17b-16e-instruct"
+const groqVisionModel = "meta-llama/llama-4-scout-17b-16e-instruct"
 
 // visionImageURL is the image_url payload (a data URL with base64 content).
 type visionImageURL struct {
