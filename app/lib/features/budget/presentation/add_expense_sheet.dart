@@ -11,10 +11,26 @@ import '../domain/budget_category.dart';
 import '../domain/expense.dart';
 
 class AddExpenseSheet extends ConsumerStatefulWidget {
-  const AddExpenseSheet({super.key, this.onSaved, this.expense});
+  const AddExpenseSheet({
+    super.key,
+    this.onSaved,
+    this.expense,
+    this.prefillAmount,
+    this.prefillDate,
+    this.prefillDescription,
+    this.prefillSubcategory,
+    this.prefillCategoryId,
+  });
 
   final VoidCallback? onSaved;
   final Expense? expense;
+
+  // Prefill values (used only in create mode, e.g. from a scanned receipt).
+  final double? prefillAmount;
+  final DateTime? prefillDate;
+  final String? prefillDescription;
+  final String? prefillSubcategory;
+  final String? prefillCategoryId;
 
   @override
   ConsumerState<AddExpenseSheet> createState() => _AddExpenseSheetState();
@@ -43,6 +59,16 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
       _subcategoryController.text = e.subcategory ?? '';
       _selectedCategoryId = e.categoryId;
       _selectedDate = e.expenseDate;
+    } else {
+      if (widget.prefillAmount != null) {
+        _amountController.text = widget.prefillAmount!.toStringAsFixed(2);
+      }
+      _descriptionController.text = widget.prefillDescription ?? '';
+      _subcategoryController.text = widget.prefillSubcategory ?? '';
+      _selectedCategoryId = widget.prefillCategoryId;
+      if (widget.prefillDate != null) {
+        _selectedDate = widget.prefillDate!;
+      }
     }
     _loadCategories();
   }
